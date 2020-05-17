@@ -5,12 +5,12 @@
 
 class Client {
 public:
-  explicit Client(CommunicationServiceInterface* communication_service_pointer);
+  explicit Client(CommunicationServiceClientInterface* communication_service_pointer);
 
-  CommunicationServiceInterface* GetCommunicationService();
+  CommunicationServiceClientInterface* GetCommunicationService();
 
 private:
-  CommunicationServiceInterface* communication_service_pointer_;
+  CommunicationServiceClientInterface* communication_service_pointer_;
 };
 
 #endif
