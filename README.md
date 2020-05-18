@@ -1,4 +1,4 @@
-# distributed-file-system
+# Distributed-file-system
 ## Target is to implement a harp like DFS.
 ### 1. Use rpclib for rpc communication.
 ### 2. Three roles of servers: Primary, Witness, Backup
