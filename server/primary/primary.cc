@@ -1,29 +1,34 @@
 #include "primary.h"
+#include <chrono>
+
 /***************
   Back End.
 ****************/
-bool PrimaryServerBackEnd::CreateFile(const std::string& file_name) {
-  std::ofstream file(file_name);
-  file.close();
-  return true;
+
+PrimaryServerBackEnd::PrimaryServerBackEnd(): running_(true),
+                                              commiting_logs_thread_(GetCommitingLogsThread()) {}
+
+PrimaryServerBackEnd::~PrimaryServerBackEnd() {
+  running_ = false;
+  commiting_logs_thread_.join();
 }
+
 
 bool PrimaryServerBackEnd::WriteFile(const std::string& file_name, const std::string& file_content) {
   std::cout << "FrontEnd calls WriteFile() " << file_name << ". \n";
   LogRecord log_record(0, next_available_log_id_++, "WriteFile", file_name, file_content, "primary");
-  PayLoad payload(log_record, 0);
+  PayLoad payload({log_record}, 0);
   if (backup_server_frontend_->RequestCommit(payload) == false) {
     return false;
   }
   InsertRecordLog(log_record);
-  std::ofstream file(file_name);
-  file << file_content;
-  file.close();
   return true;
 }
 
 std::string PrimaryServerBackEnd::ReadFile(const std::string& file_name) {
-  promised_time_ = backup_server_frontend_->GetPromiseTime();
+  if (promised_time_ < GetCurrentTimestamp()) {
+    promised_time_ = backup_server_frontend_->GetPromiseTime();
+  }
   std::ifstream file(file_name);
   std::string file_content;
   file >> file_content;
@@ -36,10 +41,29 @@ void PrimaryServerBackEnd::SetBackupServerFrontEnd(BackupServerFrontEnd* backup_
 }
 
 void PrimaryServerBackEnd::InsertRecordLog(const LogRecord& log_record) {
-  // Get mutex.
+  log_record_list_mtx_.lock();
   log_record_list_.push_back(log_record);
+  log_record_list_mtx_.unlock();
 }
 
+void PrimaryServerBackEnd::CommitLogs() {
+  while (running_) {
+    log_record_list_mtx_.lock();
+    while (!log_record_list_.empty()) {
+      const LogRecord& log = log_record_list_.front();
+      std::ofstream file(log.file_name);
+      file << log.operation_content;
+      file.close();
+      log_record_list_.pop_front();
+    }
+    log_record_list_mtx_.unlock();
+    std::this_thread::sleep_for (std::chrono::seconds(1));
+  }
+}
+
+std::thread PrimaryServerBackEnd::GetCommitingLogsThread() {
+  return std::thread( [=] { CommitLogs(); } );
+}
 
 
 /***************
@@ -54,9 +78,6 @@ bool PrimaryServerFrontEnd::Start() {
   return true;
 }
 
-bool PrimaryServerFrontEnd::CreateFile(const std::string& file_name) {
-  return primary_server_backend_->CreateFile(file_name);
-}
 
 bool PrimaryServerFrontEnd::WriteFile(const std::string& file_name, const std::string& file_content) {
   std::cout << "Client calls WriteFile() " <<file_name << ". \n";

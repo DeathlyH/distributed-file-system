@@ -1,8 +1,11 @@
 #ifndef common
 #define common
 
-
+#include <ctime>
 #include <string>
+#include <vector>
+
+long GetCurrentTimestamp();
 
 struct LogRecord {
   LogRecord(long timestamp, int log_id, const std::string& operation_name,
@@ -18,8 +21,8 @@ struct LogRecord {
 
 
 struct PayLoad {
-  PayLoad(const LogRecord& log_record, int commit_point);
-  LogRecord log_record;
+  PayLoad(const std::vector<LogRecord>& log_record_vector, int commit_point);
+  std::vector<LogRecord> log_record_vector;
   int commit_point;
 };
 

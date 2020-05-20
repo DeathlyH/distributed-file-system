@@ -3,14 +3,16 @@
   Back End.
 ****************/
 long BackupServerBackEnd::GetPromiseTime() {
-  promised_time_ = 0;
+  promised_time_ = GetCurrentTimestamp();
   std::cout << "return promised_time " << promised_time_ << ". \n";
   return promised_time_;
 }
 
 bool BackupServerBackEnd::RequestCommit(const PayLoad& payload) {
-  InsertRecordLog(payload.log_record);
-  std::cout << "file name is " << payload.log_record.file_name << ". \n";
+  for (const LogRecord& log : payload.log_record_vector) {
+    InsertRecordLog(log);
+    std::cout << "file name is " << log.file_name << ". \n";
+  }
   return true;
 }
 

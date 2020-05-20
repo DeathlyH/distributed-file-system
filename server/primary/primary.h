@@ -7,24 +7,39 @@
 #include <fstream>
 #include <string>
 #include <list>
+#include <mutex>
+#include <thread>
 
 // Definition of the back end of the primary server. When it gets some requests, it talks to the
 // backup server (front end) and then comes to a decision.
 class PrimaryServerBackEnd {
 public:
-  bool CreateFile(const std::string& file_name);
+  PrimaryServerBackEnd();
+  ~PrimaryServerBackEnd();
   std::string ReadFile(const std::string& file_name);
   bool WriteFile(const std::string& file_name, const std::string& file_content);
   void SetBackupServerFrontEnd(BackupServerFrontEnd* backup_server_frontend);
+
 private:
   void InsertRecordLog(const LogRecord& log_record);
-  std::list<LogRecord> log_record_list_;
   long GetPromisedTimeFromBackup();
   bool InformBackupToWriteFile(const std::string& file_name, const std::string& file_content);
+  // Commits the logs to the file system.
+  void CommitLogs();
+  // Must be called.
+  std::thread GetCommitingLogsThread();
+
+  // A mutex to protect log_record_list_.
+  std::mutex log_record_list_mtx_;
+  std::list<LogRecord> log_record_list_;
+
   BackupServerFrontEnd* backup_server_frontend_;
-  int next_available_log_id_;
-  int view_number_;
-  int commit_point_;
+  // True if the primary server is running.
+  bool running_;
+  std::thread commiting_logs_thread_;
+  int next_available_log_id_ = 0;
+  int view_number_ = -1;
+  int commit_point_ = -1;
   long promised_time_;
 };
 
@@ -37,7 +52,6 @@ class PrimaryServerFrontEnd {
 public:
   explicit PrimaryServerFrontEnd(PrimaryServerBackEnd* primary_server_backend);
   bool Start();
-  bool CreateFile(const std::string& file_name);
   std::string ReadFile(const std::string& file_name);
   bool WriteFile(const std::string& file_name, const std::string& file_content);
 
