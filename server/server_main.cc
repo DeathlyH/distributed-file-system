@@ -20,6 +20,7 @@ int main() {
   front_end.WriteFile(file_name, file_content);
   // std::cout << front_end.ReadFile(file_name) << " \n";
   
+  // Wait for everything to be committed.
   std::this_thread::sleep_for (std::chrono::seconds(3));
   std::cout << "hello\n";
   return 0;
