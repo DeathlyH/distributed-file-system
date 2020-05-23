@@ -25,6 +25,9 @@ bool BackupServerBackEnd::RequestCommit(const PayLoad& payload) {
     std::cout << "file name is " << log.file_name << ". \n";
     std::cout << "file content is " << log.operation_content << ". \n";
   }
+  if (payload.log_record_vector.empty()) {
+    std::cout << "Receive heartbeat from primary.";
+  }
   return true;
 }
 

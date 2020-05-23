@@ -28,15 +28,18 @@ private:
   void CommitLogs();
   // Must be called.
   std::thread GetCommitingLogsThread();
+  std::thread GetHeartBeatThread();
 
-  // A mutex to protect log_record_list_.
+  // A mutex to protect log_record_list_ and last_request_time_.
   std::mutex log_record_list_mtx_;
   std::list<LogRecord> log_record_list_;
+  long last_request_time_;
 
   BackupServerFrontEnd* backup_server_frontend_;
   // True if the primary server is running.
   bool running_;
   std::thread commiting_logs_thread_;
+  std::thread heart_beat_thread_;
   int next_available_log_id_ = 0;
   int view_number_ = -1;
   int commit_point_ = -1;

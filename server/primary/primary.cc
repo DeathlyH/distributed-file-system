@@ -6,11 +6,13 @@
 ****************/
 
 PrimaryServerBackEnd::PrimaryServerBackEnd(): running_(true),
-                                              commiting_logs_thread_(GetCommitingLogsThread()) {}
+                                              commiting_logs_thread_(GetCommitingLogsThread()),
+                                              heart_beat_thread_(GetHeartBeatThread()) {}
 
 PrimaryServerBackEnd::~PrimaryServerBackEnd() {
   running_ = false;
   commiting_logs_thread_.join();
+  heart_beat_thread_.join();
 }
 
 
@@ -43,6 +45,7 @@ void PrimaryServerBackEnd::SetBackupServerFrontEnd(BackupServerFrontEnd* backup_
 void PrimaryServerBackEnd::InsertRecordLog(const LogRecord& log_record) {
   log_record_list_mtx_.lock();
   log_record_list_.push_back(log_record);
+  last_request_time_ = GetCurrentTimestamp();
   log_record_list_mtx_.unlock();
 }
 
@@ -63,6 +66,23 @@ void PrimaryServerBackEnd::CommitLogs() {
 
 std::thread PrimaryServerBackEnd::GetCommitingLogsThread() {
   return std::thread( [=] { CommitLogs(); } );
+}
+
+std::thread PrimaryServerBackEnd::GetHeartBeatThread() {
+  return std::thread( [=] {
+    while (running_) {
+      // Emits heartbeat at least every 2 seconds.
+      if (GetCurrentTimestamp() - last_request_time_ > 2) {
+        PayLoad payload({}, 0);
+        if (backup_server_frontend_->RequestCommit(payload) == true) {
+          log_record_list_mtx_.lock();
+          last_request_time_ = GetCurrentTimestamp();
+          log_record_list_mtx_.unlock();
+        }
+      }
+      std::this_thread::sleep_for (std::chrono::seconds(1));
+    }
+  } );
 }
 
 
