@@ -115,7 +115,7 @@ std::thread PrimaryServerBackEnd::GetHeartBeatThread() {
           last_request_time_ = GetCurrentTimestamp();
           is_backup_down_ = true;
         } else {
-          // Shutting down the primary server.
+          // Shutting down the primary server. It gets partitioned.
           ShutDown();
         }
       }

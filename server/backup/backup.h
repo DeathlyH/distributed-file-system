@@ -21,21 +21,25 @@ public:
   void CommitLogs();
   // Must be called.
   std::thread GetCommitingLogsThread();
-
+  std::thread GetViewChangeThread();
 private:
+  void ShutDown();
   // True if the second server is running.
   bool running_;
   
   std::thread commiting_logs_thread_;
+  std::thread check_view_change_thread_;
   void InsertRecordLog(const LogRecord& log_record);
-  int view_number_ = -1;
+  int view_number_ = 0;
   int commit_point_ = -1;
-  long promised_time_;
+  long promised_time_ = 0;
+  long last_request_time_ = GetCurrentTimestamp();
   // A mutex to protect log_record_list_.
   std::mutex log_record_list_mtx_;
   std::list<LogRecord> log_record_list_;
   std::mutex commit_point_mtx_;
   WitnessServer* witness_server_;
+  bool is_primary_ = false;
 };
 
 // Definition of the front end of the backup server. It talks to the back end of the primary server.
@@ -48,6 +52,7 @@ public:
   bool RequestCommit(const PayLoad& payload);
   long GetPromiseTime();
   void Commit(const PayLoad& payload);
+  // Only used in testing.
   void SetNoResponse(bool no_response);
 private:
   BackupServerBackEnd* backup_server_backend_;

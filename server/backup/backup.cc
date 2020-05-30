@@ -6,20 +6,23 @@
 ****************/
 
 BackupServerBackEnd::BackupServerBackEnd():running_(true),
-                                           commiting_logs_thread_(GetCommitingLogsThread()) {}
+                                           commiting_logs_thread_(GetCommitingLogsThread()),
+                                           check_view_change_thread_(GetViewChangeThread()){}
 
 BackupServerBackEnd::~BackupServerBackEnd() {
   running_ = false;
   commiting_logs_thread_.join();
+  check_view_change_thread_.join();
 }
 
 long BackupServerBackEnd::GetPromiseTime() {
   promised_time_ = GetCurrentTimestamp();
-  std::cout << "return promised_time " << promised_time_ << ". \n";
+  std::cout << "backup returns promised_time " << promised_time_ << ". \n";
   return promised_time_;
 }
 
 bool BackupServerBackEnd::RequestCommit(const PayLoad& payload) {
+  last_request_time_ = GetCurrentTimestamp();
   if (payload.log_record_vector.empty()) {
     std::cout << "Receive heartbeat from primary. \n";
     return true;
@@ -46,6 +49,7 @@ void BackupServerBackEnd::InsertRecordLog(const LogRecord& log_record) {
 
 void BackupServerBackEnd::CommitLogs() {
   while (running_) {
+    std::this_thread::sleep_for (std::chrono::seconds(1));
     log_record_list_mtx_.lock();
     while (!log_record_list_.empty()) {
       std::cout << "backup trying to CommitLogs \n";
@@ -56,14 +60,40 @@ void BackupServerBackEnd::CommitLogs() {
         break;
       }
       commit_point_mtx_.unlock();
-      std::ofstream file("/Users/Jiaming/Desktop/test/file2.txt");
+      std::ofstream file(log.file_name);
       file << log.operation_content;
       file.close();
       log_record_list_.pop_front();
     }
     log_record_list_mtx_.unlock();
-    std::this_thread::sleep_for (std::chrono::seconds(1));
   }
+}
+
+std::thread BackupServerBackEnd::GetViewChangeThread() {
+  return std::thread( [=] {
+    while (running_) {
+      std::this_thread::sleep_for (std::chrono::seconds(1));
+      if (!is_primary_ && GetCurrentTimestamp() - last_request_time_ > 10) {
+        PayLoad payload;
+        payload.is_primary_server = false;
+        view_number_++;
+        payload.view_number = view_number_;
+        if (witness_server_->RequestViewChange(payload)) {
+          std::cout << "backup becomes primary. \n";
+          is_primary_ = true;
+          //
+        }
+        else {
+          // Backup gets partitioned.
+          ShutDown();
+        }
+      }
+    }
+  } );
+}
+
+void BackupServerBackEnd::ShutDown() {
+  running_ = false;
 }
 
 std::thread BackupServerBackEnd::GetCommitingLogsThread() {
@@ -86,7 +116,7 @@ bool BackupServerFrontEnd::Start() {
 }
 
 long BackupServerFrontEnd::GetPromiseTime() {
-  std::cout << "primary server calls GetPromiseTime(). \n";
+  std::cout << "primary server calls GetPromiseTime. \n";
   return backup_server_backend_->GetPromiseTime();
 }
 

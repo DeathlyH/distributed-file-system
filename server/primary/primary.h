@@ -22,6 +22,7 @@ public:
   void SetBackupServerFrontEnd(BackupServerFrontEnd* backup_server_frontend);
   void SetWitnessServer(WitnessServer* witness_server);
   void BringUpBackUp();
+  // Only used in testing.
   void SetNoResponse(bool no_response);
 private:
   void InsertRecordLog(const LogRecord& log_record);
@@ -47,7 +48,7 @@ private:
   int next_available_log_id_ = 0;
   int view_number_ = 0;
   int commit_point_ = -1;
-  long promised_time_;
+  long promised_time_ = 0;
   bool is_backup_down_ = false;
   bool no_response_ = false;
   WitnessServer* witness_server_;
