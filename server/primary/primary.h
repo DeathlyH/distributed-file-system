@@ -22,6 +22,7 @@ public:
   void SetBackupServerFrontEnd(BackupServerFrontEnd* backup_server_frontend);
   void SetWitnessServer(WitnessServer* witness_server);
   void BringUpBackUp();
+  void SetNoResponse(bool no_response);
 private:
   void InsertRecordLog(const LogRecord& log_record);
   long GetPromisedTimeFromBackup();
@@ -36,7 +37,7 @@ private:
   // A mutex to protect log_record_list_ and last_request_time_.
   std::mutex log_record_list_mtx_;
   std::list<LogRecord> log_record_list_;
-  long last_request_time_;
+  long last_request_time_ = 0;
 
   BackupServerFrontEnd* backup_server_frontend_;
   // True if the primary server is running.
@@ -48,6 +49,7 @@ private:
   int commit_point_ = -1;
   long promised_time_;
   bool is_backup_down_ = false;
+  bool no_response_ = false;
   WitnessServer* witness_server_;
 };
 

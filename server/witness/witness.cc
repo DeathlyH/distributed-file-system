@@ -4,14 +4,19 @@
 WitnessServer::WitnessServer() {}
 
 bool WitnessServer::RequestViewChange(const PayLoad& payload) {
+  if (payload.view_number < current_view_number_) {
+    return false;
+  }
   bool is_primary_server = payload.is_primary_server;
   
   if (is_primary_server && !backup_requested_view_change_) {
     primary_requested_view_change_ = true;
+    current_view_number_ = payload.view_number;
     return true;
   }
   if (!is_primary_server && !primary_requested_view_change_) {
     backup_requested_view_change_ = true;
+    current_view_number_ = payload.view_number;
     return true;
   }
   return false;

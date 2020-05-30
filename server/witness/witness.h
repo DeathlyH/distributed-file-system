@@ -19,6 +19,7 @@ private:
   
   std::mutex log_record_list_mtx_;
   std::list<LogRecord> log_record_list_;
+  int current_view_number_ = 0;
 };
 
 #endif

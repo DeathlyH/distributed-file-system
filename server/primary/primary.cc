@@ -61,7 +61,9 @@ void PrimaryServerBackEnd::CommitLogs() {
   while (running_) {
     std::this_thread::sleep_for (std::chrono::seconds(1));
     log_record_list_mtx_.lock();
+    int num_committed = 0;
     while (!log_record_list_.empty()) {
+      num_committed++;
       const LogRecord& log = log_record_list_.front();
       std::ofstream file(log.file_name);
       file << log.operation_content;
@@ -70,7 +72,7 @@ void PrimaryServerBackEnd::CommitLogs() {
       log_record_list_.pop_front();
     }
     log_record_list_mtx_.unlock();
-    if (!is_backup_down_) {
+    if (!is_backup_down_ && num_committed > 0) {
       backup_server_frontend_->Commit({{}, commit_point_});
     }
   }
@@ -82,7 +84,7 @@ std::thread PrimaryServerBackEnd::GetCommitingLogsThread() {
 
 std::thread PrimaryServerBackEnd::GetHeartBeatThread() {
   return std::thread( [=] {
-    while (running_) {
+    while (running_ && !no_response_) {
       // Emits heartbeat at least every 2 seconds.
       if (GetCurrentTimestamp() - last_request_time_ > 2) {
         PayLoad payload;
@@ -133,6 +135,9 @@ void PrimaryServerBackEnd::ShutDown() {
   running_ = false;
 }
 
+void PrimaryServerBackEnd::SetNoResponse(bool no_response) {
+  no_response_ = no_response;
+}
 /***************
  Front End.
 ****************/
