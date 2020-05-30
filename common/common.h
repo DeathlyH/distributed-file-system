@@ -21,9 +21,10 @@ struct LogRecord {
 
 
 struct PayLoad {
+  PayLoad() = default;
   PayLoad(const std::vector<LogRecord>& log_record_vector, int commit_point);
   std::vector<LogRecord> log_record_vector;
-  int commit_point;
+  int commit_point = 0;
 };
 
 #endif

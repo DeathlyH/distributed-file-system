@@ -13,6 +13,8 @@ public:
   ~BackupServerBackEnd();
   long GetPromiseTime();
   bool RequestCommit(const PayLoad& payload);
+  void Commit(const PayLoad& payload);
+
   // Commits the logs to the file system.
   void CommitLogs();
   // Must be called.
@@ -30,6 +32,7 @@ private:
   // A mutex to protect log_record_list_.
   std::mutex log_record_list_mtx_;
   std::list<LogRecord> log_record_list_;
+  std::mutex commit_point_mtx_;
 };
 
 // Definition of the front end of the backup server. It talks to the back end of the primary server.
@@ -41,6 +44,7 @@ public:
   // If true, the backup server agrees to commit this log.
   bool RequestCommit(const PayLoad& payload);
   long GetPromiseTime();
+  void Commit(const PayLoad& payload);
 private:
   BackupServerBackEnd* backup_server_backend_;
 };

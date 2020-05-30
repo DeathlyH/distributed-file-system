@@ -51,16 +51,18 @@ void PrimaryServerBackEnd::InsertRecordLog(const LogRecord& log_record) {
 
 void PrimaryServerBackEnd::CommitLogs() {
   while (running_) {
+    std::this_thread::sleep_for (std::chrono::seconds(1));
     log_record_list_mtx_.lock();
     while (!log_record_list_.empty()) {
       const LogRecord& log = log_record_list_.front();
       std::ofstream file(log.file_name);
       file << log.operation_content;
       file.close();
+      commit_point_ = log.log_id;
       log_record_list_.pop_front();
     }
     log_record_list_mtx_.unlock();
-    std::this_thread::sleep_for (std::chrono::seconds(1));
+    backup_server_frontend_->Commit({{}, commit_point_});
   }
 }
 
@@ -72,14 +74,14 @@ std::thread PrimaryServerBackEnd::GetHeartBeatThread() {
   return std::thread( [=] {
     while (running_) {
       // Emits heartbeat at least every 2 seconds.
-      if (GetCurrentTimestamp() - last_request_time_ > 2) {
-        PayLoad payload({}, 0);
-        if (backup_server_frontend_->RequestCommit(payload) == true) {
-          log_record_list_mtx_.lock();
-          last_request_time_ = GetCurrentTimestamp();
-          log_record_list_mtx_.unlock();
-        }
-      }
+ //     if (GetCurrentTimestamp() - last_request_time_ > 2) {
+//        PayLoad payload({}, 0);
+//        if (backup_server_frontend_->RequestCommit(payload) == true) {
+//          log_record_list_mtx_.lock();
+//          last_request_time_ = GetCurrentTimestamp();
+//          log_record_list_mtx_.unlock();
+//        }
+//      }
       std::this_thread::sleep_for (std::chrono::seconds(1));
     }
   } );
