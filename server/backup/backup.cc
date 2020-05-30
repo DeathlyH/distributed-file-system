@@ -15,6 +15,18 @@ BackupServerBackEnd::~BackupServerBackEnd() {
   check_view_change_thread_.join();
 }
 
+void BackupServerBackEnd::Start() {
+  if (!witness_server_) {
+    std::cout << "Should call SetWitnessServer() first. \n";
+  }
+  PayLoad payload = witness_server_->GetLogRecords();
+  for (const auto& log: payload.log_record_vector) {
+    log_record_list_.push_back(log);
+    next_available_log_id_ = log.log_id + 1;
+  }
+  std::cout << "Backup: next_available_log_id is " << next_available_log_id_ << ". \n";
+}
+
 long BackupServerBackEnd::GetPromiseTime() {
   promised_time_ = GetCurrentTimestamp();
   std::cout << "backup returns promised_time " << promised_time_ << ". \n";
@@ -31,6 +43,7 @@ bool BackupServerBackEnd::RequestCommit(const PayLoad& payload) {
     InsertRecordLog(log);
     std::cout << "file name is " << log.file_name << ". \n";
     std::cout << "file content is " << log.operation_content << ". \n";
+    next_available_log_id_ = log.log_id + 1;
   }
   return true;
 }
@@ -104,6 +117,38 @@ void BackupServerBackEnd::SetWitnessServer(WitnessServer* witness_server) {
   witness_server_ = witness_server;
 }
 
+void BackupServerBackEnd::Demote() {
+  is_primary_ = false;
+}
+
+std::string BackupServerBackEnd::ReadFile(const std::string& file_name) {
+  if (!is_primary_) {
+    std::cout << "Error. should call primary server. \n";
+    return "";
+  }
+  std::ifstream file(file_name);
+  std::string file_content, temp;
+  while (file >> temp) {
+    file_content += temp;
+  }
+  file.close();
+  return file_content;
+}
+
+bool BackupServerBackEnd::WriteFile(const std::string& file_name, const std::string& file_content) {
+  if (!is_primary_) {
+    std::cout << "Error. should call primary server. \n";
+    return false;
+  }
+  LogRecord log(GetCurrentTimestamp(), next_available_log_id_++, "WriteFile", file_name,
+                file_content, "backup");
+  InsertRecordLog(log);
+  commit_point_ = next_available_log_id_;
+  next_available_log_id_++;
+  return true;
+}
+
+
 /***************
   Front End.
  ****************/
@@ -136,4 +181,16 @@ void BackupServerFrontEnd::Commit(const PayLoad& payload) {
 
 void BackupServerFrontEnd::SetNoResponse(bool no_response) {
   no_response_ = no_response;
+}
+
+void BackupServerFrontEnd::Demote() {
+  backup_server_backend_->Demote();
+}
+
+std::string BackupServerFrontEnd::ReadFile(const std::string& file_name) {
+  return backup_server_backend_->ReadFile(file_name);
+}
+
+bool BackupServerFrontEnd::WriteFile(const std::string& file_name, const std::string& file_content) {
+  return backup_server_backend_->WriteFile(file_name, file_content);
 }

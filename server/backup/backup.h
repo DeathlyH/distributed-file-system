@@ -12,6 +12,8 @@ class BackupServerBackEnd {
 public:
   BackupServerBackEnd();
   ~BackupServerBackEnd();
+  // talk to witness and get missing logs, if there is any.
+  void Start();
   long GetPromiseTime();
   bool RequestCommit(const PayLoad& payload);
   void Commit(const PayLoad& payload);
@@ -22,6 +24,14 @@ public:
   // Must be called.
   std::thread GetCommitingLogsThread();
   std::thread GetViewChangeThread();
+  
+  // If called, the backup server which previously works as primary, will be demoted to backup
+  // server.
+  void Demote();
+  
+  // Will be used when working as primary.
+  std::string ReadFile(const std::string& file_name);
+  bool WriteFile(const std::string& file_name, const std::string& file_content);
 private:
   void ShutDown();
   // True if the second server is running.
@@ -40,6 +50,7 @@ private:
   std::mutex commit_point_mtx_;
   WitnessServer* witness_server_;
   bool is_primary_ = false;
+  int next_available_log_id_ = 0;
 };
 
 // Definition of the front end of the backup server. It talks to the back end of the primary server.
@@ -54,6 +65,12 @@ public:
   void Commit(const PayLoad& payload);
   // Only used in testing.
   void SetNoResponse(bool no_response);
+  
+  void Demote();
+  
+  // Will be used when working as primary.
+  std::string ReadFile(const std::string& file_name);
+  bool WriteFile(const std::string& file_name, const std::string& file_content);
 private:
   BackupServerBackEnd* backup_server_backend_;
   bool no_response_ = false;

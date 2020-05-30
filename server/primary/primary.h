@@ -17,6 +17,8 @@ class PrimaryServerBackEnd {
 public:
   PrimaryServerBackEnd();
   ~PrimaryServerBackEnd();
+  // talk to witness and get missing logs, if there is any.
+  void Start();
   std::string ReadFile(const std::string& file_name);
   bool WriteFile(const std::string& file_name, const std::string& file_content);
   void SetBackupServerFrontEnd(BackupServerFrontEnd* backup_server_frontend);

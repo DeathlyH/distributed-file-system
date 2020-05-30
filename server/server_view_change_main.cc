@@ -12,12 +12,14 @@
 //  BackupServerBackEnd backup_server_backend;
 //  BackupServerFrontEnd backup_server_frontend(&backup_server_backend);
 //  backup_server_backend.SetWitnessServer(&witness_server);
+//  backup_server_backend.Start();
 //  backup_server_frontend.Start();
 //
 //  // Initialize primary server.
 //  PrimaryServerBackEnd back_end;
 //  back_end.SetBackupServerFrontEnd(&backup_server_frontend);
 //  back_end.SetWitnessServer(&witness_server);
+//  back_end.Start();
 //  PrimaryServerFrontEnd front_end(&back_end);
 //  front_end.Start();
 //

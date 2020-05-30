@@ -15,10 +15,23 @@ PrimaryServerBackEnd::~PrimaryServerBackEnd() {
   heart_beat_thread_.join();
 }
 
+void PrimaryServerBackEnd::Start() {
+  if (!witness_server_) {
+    std::cout << "Should call SetWitnessServer() first. \n";
+  }
+  PayLoad payload = witness_server_->GetLogRecords();
+  for (const auto& log: payload.log_record_vector) {
+    log_record_list_.push_back(log);
+    next_available_log_id_ = log.log_id + 1;
+  }
+  std::cout << "Primary: next_available_log_id is " << next_available_log_id_ << ". \n";
+  backup_server_frontend_->Demote();
+}
 
 bool PrimaryServerBackEnd::WriteFile(const std::string& file_name, const std::string& file_content) {
   std::cout << "FrontEnd calls WriteFile() " << file_name << ". \n";
-  LogRecord log_record(0, next_available_log_id_++, "WriteFile", file_name, file_content, "primary");
+  LogRecord log_record(GetCurrentTimestamp(), next_available_log_id_++, "WriteFile", file_name,
+                       file_content, "primary");
   PayLoad payload({log_record}, 0);
   if (!is_backup_down_) {
     if (backup_server_frontend_->RequestCommit(payload) == false) {
@@ -40,8 +53,10 @@ std::string PrimaryServerBackEnd::ReadFile(const std::string& file_name) {
     }
   }
   std::ifstream file(file_name);
-  std::string file_content;
-  file >> file_content;
+  std::string file_content, temp;
+  while (file >> temp) {
+    file_content += temp;
+  }
   file.close();
   return file_content;
 }

@@ -8,6 +8,7 @@
 long GetCurrentTimestamp();
 
 struct LogRecord {
+  LogRecord() = default;
   LogRecord(long timestamp, int log_id, const std::string& operation_name,
             const std::string& file_name, const std::string& operation_content,
             const std::string& log_owner);

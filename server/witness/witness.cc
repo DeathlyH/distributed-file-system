@@ -1,7 +1,11 @@
 #include <iostream>
 #include "witness.h"
 
-WitnessServer::WitnessServer() {}
+WitnessServer::WitnessServer() {
+  LogRecord log(GetCurrentTimestamp(), 10, "WriteFile", "/Users/Jiaming/Desktop/test/file3.txt",
+                "witness file logs", "witness");
+  log_record_list_.push_back(log);
+}
 
 bool WitnessServer::RequestViewChange(const PayLoad& payload) {
   if (payload.view_number < current_view_number_) {

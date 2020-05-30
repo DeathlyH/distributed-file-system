@@ -1,6 +1,4 @@
 #include <iostream>
-#include "client.h"
-#include "../communication-service/rpc.h"
 
 //int main() {
 //  RpcClient rpc_client("127.0.0.1", 8000);
