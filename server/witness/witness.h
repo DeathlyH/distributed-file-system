@@ -1,3 +1,6 @@
+#ifndef witness
+#define witness
+
 #include "../../common/common.h"
 #include <list>
 #include <mutex>
@@ -8,7 +11,7 @@ public:
   PayLoad GetLogRecords();
   bool RecordLogRecords(const PayLoad& payload);
   
-  bool RequestViewChange(bool is_primary_server);
+  bool RequestViewChange(const PayLoad& payload);
   
 private:
   bool primary_requested_view_change_ = false;
@@ -17,3 +20,5 @@ private:
   std::mutex log_record_list_mtx_;
   std::list<LogRecord> log_record_list_;
 };
+
+#endif

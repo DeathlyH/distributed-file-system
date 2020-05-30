@@ -16,7 +16,7 @@
 //  
 //  // Simulate client requests.
 //  std::string file_name = "/Users/Jiaming/Desktop/test/file.txt";
-//  std::string file_content = "hello world 9:58";
+//  std::string file_content = "hello world 10:57 05/30";
 //  front_end.WriteFile(file_name, file_content);
 //  // std::cout << front_end.ReadFile(file_name) << " \n";
 //  

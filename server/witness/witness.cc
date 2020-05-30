@@ -1,6 +1,11 @@
+#include <iostream>
 #include "witness.h"
 
-bool WitnessServer::RequestViewChange(bool is_primary_server) {
+WitnessServer::WitnessServer() {}
+
+bool WitnessServer::RequestViewChange(const PayLoad& payload) {
+  bool is_primary_server = payload.is_primary_server;
+  
   if (is_primary_server && !backup_requested_view_change_) {
     primary_requested_view_change_ = true;
     return true;
@@ -14,6 +19,9 @@ bool WitnessServer::RequestViewChange(bool is_primary_server) {
 
 bool WitnessServer::RecordLogRecords(const PayLoad& payload) {
   log_record_list_mtx_.lock();
+  if (payload.log_record_vector.empty()) {
+    std::cout << "witness receives a heart beat. \n";
+  }
   for (const auto& log : payload.log_record_vector) {
     log_record_list_.push_back(log);
   }

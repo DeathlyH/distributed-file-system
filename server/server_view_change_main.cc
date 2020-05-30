@@ -1,8 +1,13 @@
 #include <iostream>
 #include "primary/primary.h"
 #include "backup/backup.h"
+#include "witness/witness.h"
 
 int main() {
+  // Initialize witness server.
+  WitnessServer witness_server;
+
+  
   // Initialize backup server.
   BackupServerBackEnd backup_server_backend;
   BackupServerFrontEnd backup_server_frontend(&backup_server_backend);
@@ -11,17 +16,16 @@ int main() {
   // Initialize primary server.
   PrimaryServerBackEnd back_end;
   back_end.SetBackupServerFrontEnd(&backup_server_frontend);
+  back_end.SetWitnessServer(&witness_server);
   PrimaryServerFrontEnd front_end(&back_end);
   front_end.Start();
 
-  // Simulate client requests.
-  std::string file_name = "/Users/Jiaming/Desktop/test/file.txt";
-  std::string file_content = "hello world 10:58";
-  front_end.WriteFile(file_name, file_content);
-  // std::cout << front_end.ReadFile(file_name) << " \n";
+  std::this_thread::sleep_for (std::chrono::seconds(4));
+  backup_server_frontend.SetNoResponse(true);
+  std::cout << "No reponse is set to True. \n";
 
   // Wait for everything to be committed.
   std::this_thread::sleep_for (std::chrono::seconds(15));
-  std::cout << "hello\n";
+  std::cout << "The End. \n";
   return 0;
 }

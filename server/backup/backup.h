@@ -5,6 +5,7 @@
 #include <mutex>
 #include <thread>
 #include "../../common/common.h"
+#include "../witness/witness.h"
 
 // Definition of the back end of the backup server. It processes the message from the primary server.
 class BackupServerBackEnd {
@@ -14,7 +15,8 @@ public:
   long GetPromiseTime();
   bool RequestCommit(const PayLoad& payload);
   void Commit(const PayLoad& payload);
-
+  void SetWitnessServer(WitnessServer* witness_server);
+  
   // Commits the logs to the file system.
   void CommitLogs();
   // Must be called.
@@ -33,6 +35,7 @@ private:
   std::mutex log_record_list_mtx_;
   std::list<LogRecord> log_record_list_;
   std::mutex commit_point_mtx_;
+  WitnessServer* witness_server_;
 };
 
 // Definition of the front end of the backup server. It talks to the back end of the primary server.
@@ -45,8 +48,10 @@ public:
   bool RequestCommit(const PayLoad& payload);
   long GetPromiseTime();
   void Commit(const PayLoad& payload);
+  void SetNoResponse(bool no_response);
 private:
   BackupServerBackEnd* backup_server_backend_;
+  bool no_response_ = false;
 };
 
 #endif

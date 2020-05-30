@@ -25,6 +25,10 @@ struct PayLoad {
   PayLoad(const std::vector<LogRecord>& log_record_vector, int commit_point);
   std::vector<LogRecord> log_record_vector;
   int commit_point = 0;
+  
+  // Used during a view change.
+  bool is_primary_server;
+  int view_number;
 };
 
 #endif

@@ -70,6 +70,10 @@ std::thread BackupServerBackEnd::GetCommitingLogsThread() {
   return std::thread( [=] { CommitLogs(); } );
 }
 
+void BackupServerBackEnd::SetWitnessServer(WitnessServer* witness_server) {
+  witness_server_ = witness_server;
+}
+
 /***************
   Front End.
  ****************/
@@ -87,14 +91,19 @@ long BackupServerFrontEnd::GetPromiseTime() {
 }
 
 bool BackupServerFrontEnd::RequestCommit(const PayLoad& payload) {
+  if (no_response_) {
+    return false;
+  }
   std::cout << "primary server calls RequestCommit(). \n";
   return backup_server_backend_->RequestCommit(payload);
 }
 
 void BackupServerFrontEnd::Commit(const PayLoad& payload) {
   std::cout << "primary server calls Commit(). \n";
-  if (!backup_server_backend_) {
-    std::cout << "primary server calls Commit() NULLLLLL. \n";
-  }
+
   backup_server_backend_->Commit(payload);
+}
+
+void BackupServerFrontEnd::SetNoResponse(bool no_response) {
+  no_response_ = no_response;
 }

@@ -3,6 +3,7 @@
 
 #include "../../common/common.h"
 #include "../backup/backup.h"
+#include "../witness/witness.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -19,13 +20,15 @@ public:
   std::string ReadFile(const std::string& file_name);
   bool WriteFile(const std::string& file_name, const std::string& file_content);
   void SetBackupServerFrontEnd(BackupServerFrontEnd* backup_server_frontend);
-
+  void SetWitnessServer(WitnessServer* witness_server);
+  void BringUpBackUp();
 private:
   void InsertRecordLog(const LogRecord& log_record);
   long GetPromisedTimeFromBackup();
   bool InformBackupToWriteFile(const std::string& file_name, const std::string& file_content);
   // Commits the logs to the file system.
   void CommitLogs();
+  void ShutDown();
   // Must be called.
   std::thread GetCommitingLogsThread();
   std::thread GetHeartBeatThread();
@@ -41,9 +44,11 @@ private:
   std::thread commiting_logs_thread_;
   std::thread heart_beat_thread_;
   int next_available_log_id_ = 0;
-  int view_number_ = -1;
+  int view_number_ = 0;
   int commit_point_ = -1;
   long promised_time_;
+  bool is_backup_down_ = false;
+  WitnessServer* witness_server_;
 };
 
 
@@ -57,6 +62,7 @@ public:
   bool Start();
   std::string ReadFile(const std::string& file_name);
   bool WriteFile(const std::string& file_name, const std::string& file_content);
+  void BringUpBackUp();
 
 private:
   PrimaryServerBackEnd* primary_server_backend_;
