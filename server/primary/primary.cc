@@ -1,13 +1,17 @@
 #include "primary.h"
 #include <chrono>
 #include "rpc/server.h"
+#include <iostream>
+#include <fstream>
+#include <string>
 
 /***************
  Back End.
  ****************/
 
 PrimaryServerBackEnd::PrimaryServerBackEnd(int port_num) :
-		port_num(port_num), running_(true), commiting_logs_thread_(GetCommitingLogsThread()), heart_beat_thread_(
+		port_num(port_num), running_(true), commiting_logs_thread_(
+				GetCommitingLogsThread()), heart_beat_thread_(
 				GetHeartBeatThread()) {
 }
 
@@ -58,10 +62,13 @@ std::string PrimaryServerBackEnd::ReadFile(const std::string &file_name) {
 	}
 	std::ifstream file(file_name);
 	std::string file_content, temp;
-	while (file >> temp) {
+	while (std::getline(file, temp)) {
 		file_content += temp;
 	}
+
 	file.close();
+
+	std::cout<<file_content<<std::endl;
 	return file_content;
 }
 
@@ -143,7 +150,8 @@ std::thread PrimaryServerBackEnd::GetHeartBeatThread() {
 	});
 }
 
-void PrimaryServerBackEnd::SetWitnessServer(WitnessServerFrontEnd *witness_server) {
+void PrimaryServerBackEnd::SetWitnessServer(
+		WitnessServerFrontEnd *witness_server) {
 	witness_server_ = witness_server;
 }
 
@@ -159,29 +167,24 @@ void PrimaryServerBackEnd::SetNoResponse(bool no_response) {
 	no_response_ = no_response;
 }
 
-
-
-
-
 int main() {
 	// Initialize backup server.
 	PrimaryServerBackEnd primaryBackend(8080);
 	WitnessServerFrontEnd witnessServer("127.0.0.1", 8071);
 	BackupServerFrontEnd backupServer("127.0.0.1", 8070);
-    primaryBackend.SetWitnessServer(&witnessServer);
-    primaryBackend.SetBackupServerFrontEnd(&backupServer);
+	primaryBackend.SetWitnessServer(&witnessServer);
+	primaryBackend.SetBackupServerFrontEnd(&backupServer);
 
-    rpc::server srv(primaryBackend.getPortNum());
+	rpc::server srv(primaryBackend.getPortNum());
 	srv.bind("WriteFile",
 			[&primaryBackend](const std::string &file_name,
 					const std::string &file_content) {
 				return primaryBackend.WriteFile(file_name, file_content);
 			});
 
-	srv.bind("ReadFile", [&primaryBackend](std::string file_name){
+	srv.bind("ReadFile", [&primaryBackend](std::string file_name) {
 		return primaryBackend.ReadFile(file_name);
 	});
-
 
 //	srv.bind("RegisterBackup", [&primaryBackend](std::string backup_ip, int port_num){
 //		 primaryBackend.RegisterBackup(backup_ip, port_num);
@@ -192,10 +195,10 @@ int main() {
 //		 primaryBackend.RegisterWitness(backup_ip, port_num);
 //	});
 
-	srv.bind("BringUpBackUp", [&primaryBackend](){
+	srv.bind("BringUpBackUp", [&primaryBackend]() {
 		primaryBackend.BringUpBackUp();
 	});
-	std::cout<< "Primary Server is running..." <<std::endl;
+	std::cout << "Primary Server is running..." << std::endl;
 //	srv.bind("ReadFile", &PrimaryServerFrontEnd::ReadFile);
 //	srv.bind("WriteFile", &PrimaryServerFrontEnd::WriteFile);
 //	srv.bind("CreateFile", &PrimaryServerFrontEnd::CreateFile);
@@ -204,5 +207,4 @@ int main() {
 	srv.run();
 
 }
-
 
