@@ -2,8 +2,8 @@
 #define primary
 
 #include "../../common/common.h"
-#include "../backup/backup.h"
-#include "../witness/witness.h"
+#include "../backup/backupFrontEnd.h"
+#include "../witness/witnessFrontEnd.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -15,18 +15,24 @@
 // backup server (front end) and then comes to a decision.
 class PrimaryServerBackEnd {
 public:
-  PrimaryServerBackEnd();
+  PrimaryServerBackEnd(int port_num);
   ~PrimaryServerBackEnd();
+  int getPortNum(){
+	  return port_num;
+  }
   // talk to witness and get missing logs, if there is any.
   void Start();
   std::string ReadFile(const std::string& file_name);
   bool WriteFile(const std::string& file_name, const std::string& file_content);
   void SetBackupServerFrontEnd(BackupServerFrontEnd* backup_server_frontend);
-  void SetWitnessServer(WitnessServer* witness_server);
+  void SetWitnessServer(WitnessServerFrontEnd* witness_server);
   void BringUpBackUp();
+
+  //void PrimaryServerBackEnd::RegisterBackup(std::string backup_ip, int port_num);
   // Only used in testing.
   void SetNoResponse(bool no_response);
 private:
+  int port_num;
   void InsertRecordLog(const LogRecord& log_record);
   long GetPromisedTimeFromBackup();
   bool InformBackupToWriteFile(const std::string& file_name, const std::string& file_content);
@@ -53,25 +59,11 @@ private:
   long promised_time_ = 0;
   bool is_backup_down_ = false;
   bool no_response_ = false;
-  WitnessServer* witness_server_;
+  WitnessServerFrontEnd* witness_server_;
 };
 
 
-// Definition of the front end of the primary server. It receives the requests from the client, and
-// forwards them to the backend server. After the backend finishes processing the requests, the front
-// end returns them back to the client.
-// Some possible ways of communication are RPC or network.
-class PrimaryServerFrontEnd {
-public:
-  explicit PrimaryServerFrontEnd(PrimaryServerBackEnd* primary_server_backend);
-  bool Start();
-  std::string ReadFile(const std::string& file_name);
-  bool WriteFile(const std::string& file_name, const std::string& file_content);
-  void BringUpBackUp();
 
-private:
-  PrimaryServerBackEnd* primary_server_backend_;
-};
 
 
 #endif
