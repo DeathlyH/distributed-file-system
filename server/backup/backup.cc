@@ -1,6 +1,7 @@
 #include "backup.h"
 #include <fstream>
 #include "rpc/server.h"
+#include <iostream>
 /***************
  Back End.
  ****************/
@@ -131,7 +132,7 @@ std::string BackupServerBackEnd::ReadFile(const std::string &file_name) {
 	}
 	std::ifstream file(file_name);
 	std::string file_content, temp;
-	while (file >> temp) {
+	while (std::getline(file, temp)) {
 		file_content += temp;
 	}
 	file.close();
