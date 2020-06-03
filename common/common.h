@@ -25,14 +25,15 @@ struct LogRecord {
 
 struct PayLoad {
 	PayLoad() = default;
-	PayLoad(const std::vector<LogRecord> &log_record_vector, int commit_point);
+	PayLoad(const std::vector<LogRecord> &log_record_vector, int commit_point, int log_ap);
 	std::vector<LogRecord> log_record_vector;
 	int commit_point = 0;
+	int log_ap = 0;
 
 	// Used during a view change.
 	bool is_primary_server;
 	int view_number;
-			MSGPACK_DEFINE(log_record_vector, commit_point, is_primary_server, view_number)
+			MSGPACK_DEFINE(log_record_vector, commit_point, log_ap, is_primary_server, view_number)
 	;
 
 };

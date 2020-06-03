@@ -13,6 +13,8 @@ WitnessServer::WitnessServer(int port_num): port_num(port_num) {
  *
  */
 bool WitnessServer::RequestViewChange(const PayLoad &payload) {
+
+	std::cout<<"Received request view change "<<payload.view_number<<std::endl;
 	if (payload.view_number < current_view_number_) {
 		return false;
 	}
@@ -33,6 +35,7 @@ bool WitnessServer::RequestViewChange(const PayLoad &payload) {
 
 
 bool WitnessServer::RecordLogRecords(const PayLoad &payload) {
+	std::cout<<"Witness record log"<<std::endl;
 	log_record_list_mtx_.lock();
 	if (payload.log_record_vector.empty()) {
 		std::cout << "witness receives a heart beat. \n";
@@ -45,6 +48,7 @@ bool WitnessServer::RecordLogRecords(const PayLoad &payload) {
 }
 
 PayLoad WitnessServer::GetLogRecords() {
+	std::cout<<"Witness help recover log records"<<std::endl;
 	PayLoad payload;
 	log_record_list_mtx_.lock();
 	for (const auto &log : log_record_list_) {

@@ -1,10 +1,7 @@
 /*
- * test_dfs.cc
- *
- *  Created on: Jun 1, 2020
- *      Author: zhihua
+ * Test dfs read/write
  */
-
+#include <iostream>
 #include "../server/backup/backupFrontEnd.h"
 #include "../server/primary/primaryFrontEnd.h"
 #include "../server/witness/witnessFrontEnd.h"
@@ -18,10 +15,16 @@ int main(){
 
 	primary.WriteFile("test.txt", "Hello world.");
 
+	std::string file_content = primary.ReadFile("test.txt");
 
-	backup.SetNoResponse(true);
+	std::cout<<"Read back test.txt"<<std::endl;
 
-	backup.WriteFile("test2.txt", "Hello abcd.");
+	std::cout<<file_content<<std::endl;
+
+
+	//backup.SetNoResponse(true);
+
+	//backup.WriteFile("test2.txt", "Hello abcd.");
 
 
 	return 0;

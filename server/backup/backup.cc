@@ -38,48 +38,72 @@ long BackupServerBackEnd::GetPromiseTime() {
 
 bool BackupServerBackEnd::RequestCommit(const PayLoad &payload) {
 	last_request_time_ = GetCurrentTimestamp();
+
+	//used as hearbeat
 	if (payload.log_record_vector.empty()) {
 		std::cout << "Receive heartbeat from primary. \n";
 		return true;
 	}
+
+	//can commit check
 	for (const LogRecord &log : payload.log_record_vector) {
+		//only accepts log in log order.
+		if (log.log_id !=next_available_log_id_){
+			return false;
+		}
+
 		InsertRecordLog(log);
 		std::cout << "file name is " << log.file_name << ". \n";
 		std::cout << "file content is " << log.operation_content << ". \n";
-		next_available_log_id_ = log.log_id + 1;
+		//next_available_log_id_ = log.log_id + 1;
 	}
 	return true;
 }
 
 void BackupServerBackEnd::Commit(const PayLoad &payload) {
 	commit_point_mtx_.lock();
-	commit_point_ = payload.commit_point;
+	if (payload.commit_point > commit_point_){
+		//backup maintains a CP stores the largest CP it has received in message.
+	    commit_point_ = payload.commit_point;
+	    server_log_ap = payload.log_ap;
+	}
 	commit_point_mtx_.unlock();
 }
 
 void BackupServerBackEnd::InsertRecordLog(const LogRecord &log_record) {
 	log_record_list_mtx_.lock();
 	log_record_list_.push_back(log_record);
+	next_available_log_id_ +=1;
 	log_record_list_mtx_.unlock();
 }
 
-void BackupServerBackEnd::CommitLogs() {
+void BackupServerBackEnd::ApplyLogs() {
 	while (running_) {
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 		log_record_list_mtx_.lock();
-		while (!log_record_list_.empty()) {
-			std::cout << "backup trying to CommitLogs \n";
-			const LogRecord &log = log_record_list_.front();
-			commit_point_mtx_.lock();
-			if (commit_point_ < log.log_id) {
-				commit_point_mtx_.unlock();
+		while (!log_record_list_.empty()) { //TODO double check this
+
+			if ((!is_primary_) && (log_ap > server_log_ap)){
 				break;
 			}
-			commit_point_mtx_.unlock();
-			std::ofstream file(log.file_name);
-			file << log.operation_content;
-			file.close();
+			std::cout << "backup trying to apply Logs \n";
+			const LogRecord &log = log_record_list_.front();
+//			commit_point_mtx_.lock();
+//			if (commit_point_ < log.log_id) {
+//				commit_point_mtx_.unlock();
+//				break;
+//			}
+//			commit_point_mtx_.unlock();
+
+			if (log.operation_name.compare("WriteFile")==0){
+				std::ofstream file(log.file_name);
+				file << log.operation_content;
+				file.close();
+			}
+			log_ap = log.log_id;
 			log_record_list_.pop_front();
+
+
 		}
 		log_record_list_mtx_.unlock();
 	}
@@ -113,7 +137,7 @@ void BackupServerBackEnd::ShutDown() {
 }
 
 std::thread BackupServerBackEnd::GetCommitingLogsThread() {
-	return std::thread([=] {CommitLogs();});
+	return std::thread([=] {ApplyLogs();});
 }
 
 void BackupServerBackEnd::SetWitnessServer(

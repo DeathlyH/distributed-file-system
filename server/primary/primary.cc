@@ -40,7 +40,10 @@ bool PrimaryServerBackEnd::WriteFile(const std::string &file_name,
 	std::cout << "FrontEnd calls WriteFile() " << file_name << ". \n";
 	LogRecord log_record(GetCurrentTimestamp(), next_available_log_id_++,
 			"WriteFile", file_name, file_content, "primary");
-	PayLoad payload( { log_record }, 0);
+	InsertRecordLog(log_record);
+
+	//Check backup servers can commit.
+	PayLoad payload( { log_record }, commit_point_, log_ap);
 	if (!is_backup_down_) {
 		if (backup_server_frontend_->RequestCommit(payload) == false) {
 			return false;
@@ -50,7 +53,21 @@ bool PrimaryServerBackEnd::WriteFile(const std::string &file_name,
 			return false;
 	}
 
-	InsertRecordLog(log_record);
+	//Do asynchronous commit
+	cp_mutex.lock();
+	commit_point_++;
+
+	PayLoad payload2( { }, commit_point_, log_ap);
+
+	if (!is_backup_down_) {
+		backup_server_frontend_->Commit(payload2);
+	}
+	//witness_server -> Commit(payload);
+
+	cp_mutex.unlock();
+
+	//send commit to backups asynchronously.
+
 	return true;
 }
 
@@ -68,7 +85,7 @@ std::string PrimaryServerBackEnd::ReadFile(const std::string &file_name) {
 
 	file.close();
 
-	std::cout<<file_content<<std::endl;
+	std::cout << file_content << std::endl;
 	return file_content;
 }
 
@@ -84,29 +101,39 @@ void PrimaryServerBackEnd::InsertRecordLog(const LogRecord &log_record) {
 	log_record_list_mtx_.unlock();
 }
 
-void PrimaryServerBackEnd::CommitLogs() {
+/*
+ * Thread to apply the event records.
+ */
+void PrimaryServerBackEnd::ApplyLogs() {
 	while (running_) {
+		//mimic some delay for processing
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 		log_record_list_mtx_.lock();
-		int num_committed = 0;
+		//int num_committed = 0;
 		while (!log_record_list_.empty()) {
-			num_committed++;
+			//num_committed++;
+
+
 			const LogRecord &log = log_record_list_.front();
-			std::ofstream file(log.file_name);
-			file << log.operation_content;
-			file.close();
-			commit_point_ = log.log_id;
+			//apply the write
+			if (log.operation_name.compare("WriteFile") == 0) {
+				std::ofstream file(log.file_name);
+				file << log.operation_content;
+				file.close();
+			}
+			//update ap pointer.
+			log_ap = log.log_id;
 			log_record_list_.pop_front();
 		}
 		log_record_list_mtx_.unlock();
-		if (!is_backup_down_ && num_committed > 0) {
-			backup_server_frontend_->Commit( { { }, commit_point_ });
-		}
+//		if (!is_backup_down_ && num_committed > 0) {
+//			backup_server_frontend_->Commit( { { }, commit_point_ });
+//		}
 	}
 }
 
 std::thread PrimaryServerBackEnd::GetCommitingLogsThread() {
-	return std::thread([=] {CommitLogs();});
+	return std::thread([=] {ApplyLogs();});
 }
 
 std::thread PrimaryServerBackEnd::GetHeartBeatThread() {
@@ -199,10 +226,6 @@ int main() {
 		primaryBackend.BringUpBackUp();
 	});
 	std::cout << "Primary Server is running..." << std::endl;
-//	srv.bind("ReadFile", &PrimaryServerFrontEnd::ReadFile);
-//	srv.bind("WriteFile", &PrimaryServerFrontEnd::WriteFile);
-//	srv.bind("CreateFile", &PrimaryServerFrontEnd::CreateFile);
-//	srv.bind("DeleteFile", &PrimaryServerFrontEnd::DeleteFile);
 	srv.suppress_exceptions(true); //turn the exception to error response
 	srv.run();
 

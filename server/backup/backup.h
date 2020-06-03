@@ -20,7 +20,7 @@ public:
 	void SetWitnessServer(WitnessServerFrontEnd *witness_server);
     int getPortNum(){return port_num;};
 	// Commits the logs to the file system.
-	void CommitLogs();
+	void ApplyLogs();
 	// Must be called.
 	std::thread GetCommitingLogsThread();
 	std::thread GetViewChangeThread();
@@ -44,6 +44,8 @@ private:
 	void InsertRecordLog(const LogRecord &log_record);
 	int view_number_ = 0;
 	int commit_point_ = -1;
+	int log_ap = -1;
+	int server_log_ap = -1;
 	long promised_time_ = 0;
 	long last_request_time_ = GetCurrentTimestamp();
 	// A mutex to protect log_record_list_.

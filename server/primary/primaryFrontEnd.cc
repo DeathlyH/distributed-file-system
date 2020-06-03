@@ -33,6 +33,7 @@ std::string PrimaryServerFrontEnd::ReadFile(const std::string &file_name) {
 	std::cout << "Client calls ReadFile() " << file_name << ". \n";
 	rpc::client c(host_ip, port_num);
 	std::string result = c.call("ReadFile", file_name).as<std::string>();
+	std::cout<<result<<std::endl;
 	return result;
 }
 

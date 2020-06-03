@@ -37,7 +37,7 @@ private:
   long GetPromisedTimeFromBackup();
   bool InformBackupToWriteFile(const std::string& file_name, const std::string& file_content);
   // Commits the logs to the file system.
-  void CommitLogs();
+  void ApplyLogs();
   void ShutDown();
   // Must be called.
   std::thread GetCommitingLogsThread();
@@ -45,6 +45,7 @@ private:
 
   // A mutex to protect log_record_list_ and last_request_time_.
   std::mutex log_record_list_mtx_;
+  std::mutex cp_mutex;
   std::list<LogRecord> log_record_list_;
   long last_request_time_ = 0;
 
@@ -56,8 +57,10 @@ private:
   int next_available_log_id_ = 0;
   int view_number_ = 0;
   int commit_point_ = -1;
+  int log_ap = -1;
   long promised_time_ = 0;
   bool is_backup_down_ = false;
+  bool is_witness_down_ = false;
   bool no_response_ = false;
   WitnessServerFrontEnd* witness_server_;
 };

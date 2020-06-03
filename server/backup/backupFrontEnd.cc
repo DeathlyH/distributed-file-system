@@ -46,7 +46,7 @@ bool BackupServerFrontEnd::RequestCommit(const PayLoad &payload) {
 void BackupServerFrontEnd::Commit(const PayLoad &payload) {
 	std::cout << "primary server calls Commit(). \n";
 	rpc::client c(host_ip, port_num);
-	c.call("Commit", payload);
+	c.async_call("Commit", payload);
 
 	//backup_server_backend_->Commit(payload);
 }
