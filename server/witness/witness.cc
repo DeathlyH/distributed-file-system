@@ -55,6 +55,7 @@ PayLoad WitnessServer::GetLogRecords() {
 		payload.log_record_vector.push_back(log);
 	}
 	log_record_list_mtx_.unlock();
+    payload.view_number = current_view_number_;
 	return payload;
 }
 

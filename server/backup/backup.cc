@@ -26,6 +26,7 @@ void BackupServerBackEnd::Start() {
 		log_record_list_.push_back(log);
 		next_available_log_id_ = log.log_id + 1;
 	}
+    view_number_ = payload.view_number;
 	std::cout << "Backup: next_available_log_id is " << next_available_log_id_
 			<< ". \n";
 }
