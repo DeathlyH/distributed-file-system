@@ -7,11 +7,6 @@ CC_SRCS += \
 ../server/backup/backup.cc \
 ../server/backup/backupFrontEnd.cc 
 
-O_SRCS += \
-../server/backup/backup.o \
-../server/backup/common.o \
-../server/backup/witnessFrontEnd.o 
-
 CC_DEPS += \
 ./server/backup/backup.d \
 ./server/backup/backupFrontEnd.d 

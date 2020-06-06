@@ -12,14 +12,17 @@ int main(){
 	WitnessServerFrontEnd witness("127.0.0.1", 8071);
 	PrimaryServerFrontEnd primary("127.0.0.1", 8080);
 
+	for (int i=0;i<100;i++){
 
-	primary.WriteFile("test.txt", "Hello world.");
+		backup.WriteFile("test.txt", "Hello world.");
 
-	std::string file_content = primary.ReadFile("test.txt");
+		std::string file_content = backup.ReadFile("test.txt");
 
-	std::cout<<"Read back test.txt"<<std::endl;
+		std::cout<<"Read back test.txt"<<std::endl;
 
-	std::cout<<file_content<<std::endl;
+		std::cout<<file_content<<std::endl;
+
+	}
 
 
 	//backup.SetNoResponse(true);

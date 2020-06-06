@@ -87,8 +87,9 @@ void BackupServerBackEnd::ApplyLogs() {
 			if ((!is_primary_) && (log_ap > server_log_ap)){
 				break;
 			}
-			std::cout << "backup trying to apply Logs \n";
+
 			const LogRecord &log = log_record_list_.front();
+			std::cout << "backup server apply Log "<<log.log_id<<std::endl;
 //			commit_point_mtx_.lock();
 //			if (commit_point_ < log.log_id) {
 //				commit_point_mtx_.unlock();
@@ -170,11 +171,20 @@ bool BackupServerBackEnd::WriteFile(const std::string &file_name,
 		std::cout << "Error. should call primary server. \n";
 		return false;
 	}
-	LogRecord log(GetCurrentTimestamp(), next_available_log_id_++, "WriteFile",
+	LogRecord log_record(GetCurrentTimestamp(), next_available_log_id_, "WriteFile",
 			file_name, file_content, "backup");
-	InsertRecordLog(log);
-	commit_point_ = next_available_log_id_;
-	next_available_log_id_++;
+	InsertRecordLog(log_record);
+
+	//The only reason the backup becomes primary is witness is helping him.
+	PayLoad payload( { log_record }, commit_point_, log_ap);
+	if (witness_server_->RecordLogRecords(payload) == false)
+				return false;
+
+	commit_point_mtx_.lock();
+	//commit_point_ = next_available_log_id_;
+	//next_available_log_id_++;
+	commit_point_++;
+	commit_point_mtx_.unlock();
 	return true;
 }
 
@@ -208,11 +218,11 @@ int main() {
 
 
     srv.bind("WriteFile", [&backend](std::string file_name, std::string file_content){
-    	backend.WriteFile(file_name, file_content);
+    	return backend.WriteFile(file_name, file_content);
     });
 
     srv.bind("ReadFile", [&backend](std::string file_name){
-    	backend.ReadFile(file_name);
+    	return backend.ReadFile(file_name);
     });
 
 	srv.suppress_exceptions(true); //turn the exception to error response

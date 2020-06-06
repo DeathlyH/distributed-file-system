@@ -1,5 +1,6 @@
 #include <iostream>
 #include "witness.h"
+#include <string>
 #include "rpc/server.h"
 
 WitnessServer::WitnessServer(int port_num): port_num(port_num) {
@@ -14,8 +15,12 @@ WitnessServer::WitnessServer(int port_num): port_num(port_num) {
  */
 bool WitnessServer::RequestViewChange(const PayLoad &payload) {
 
-	std::cout<<"Received request view change "<<payload.view_number<<std::endl;
-	if (payload.view_number < current_view_number_) {
+	std::string requester[2] = {"backup", "primary"};
+	std::cout<<"Witness current view no.:"<<current_view_number_<<std::endl;
+	std::cout<<"Received request view no. change to "<<payload.view_number<<" from "<< requester[payload.is_primary_server]<<std::endl;
+
+	if (payload.view_number <= current_view_number_) {
+		std::cout<<"Denied"<<std::endl;
 		return false;
 	}
 	bool is_primary_server = payload.is_primary_server;
@@ -23,11 +28,13 @@ bool WitnessServer::RequestViewChange(const PayLoad &payload) {
 	if (is_primary_server && !backup_requested_view_change_) {
 		primary_requested_view_change_ = true;
 		current_view_number_ = payload.view_number;
+		std::cout<<"Succeeded"<<std::endl;
 		return true;
 	}
 	if (!is_primary_server && !primary_requested_view_change_) {
 		backup_requested_view_change_ = true;
 		current_view_number_ = payload.view_number;
+		std::cout<<"Succeeded"<<std::endl;
 		return true;
 	}
 	return false;
@@ -35,13 +42,16 @@ bool WitnessServer::RequestViewChange(const PayLoad &payload) {
 
 
 bool WitnessServer::RecordLogRecords(const PayLoad &payload) {
-	std::cout<<"Witness record log"<<std::endl;
+
 	log_record_list_mtx_.lock();
 	if (payload.log_record_vector.empty()) {
 		std::cout << "witness receives a heart beat. \n";
 	}
-	for (const auto &log : payload.log_record_vector) {
-		log_record_list_.push_back(log);
+	else{
+		for (const auto &log : payload.log_record_vector) {
+			log_record_list_.push_back(log);
+			std::cout<<"Witness record log  "<<log.log_id<<std::endl;
+		}
 	}
 	log_record_list_mtx_.unlock();
 	return true;

@@ -24,6 +24,13 @@ public:
 	std::string ReadFile(const std::string &file_name);
 	bool WriteFile(const std::string &file_name,
 			const std::string &file_content);
+	std::string get_ip(){
+		return host_ip;
+	}
+
+	int get_port(){
+		return port_num;
+	}
 private:
 	//BackupServerBackEnd* backup_server_backend_;
 	bool no_response_ = false;

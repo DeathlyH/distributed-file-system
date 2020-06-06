@@ -8,13 +8,6 @@ CC_SRCS += \
 ../client/client.cc \
 ../client/test_dfs.cc 
 
-O_SRCS += \
-../client/backupFrontEnd.o \
-../client/common.o \
-../client/primaryFrontEnd.o \
-../client/test_dfs.o \
-../client/witnessFrontEnd.o 
-
 CC_DEPS += \
 ./client/client-main.d \
 ./client/client.d \

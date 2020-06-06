@@ -13,6 +13,9 @@ PrimaryServerBackEnd::PrimaryServerBackEnd(int port_num) :
 		port_num(port_num), running_(true), commiting_logs_thread_(
 				GetCommitingLogsThread()), heart_beat_thread_(
 				GetHeartBeatThread()) {
+	//register myself to the member list
+	Member t = { 1, "127.0.0.1", port_num, 1, 0 };
+	memberList.push_back(t);
 }
 
 PrimaryServerBackEnd::~PrimaryServerBackEnd() {
@@ -90,11 +93,6 @@ std::string PrimaryServerBackEnd::ReadFile(const std::string &file_name) {
 	return file_content;
 }
 
-void PrimaryServerBackEnd::SetBackupServerFrontEnd(
-		BackupServerFrontEnd *backup_server_frontend) {
-	backup_server_frontend_ = backup_server_frontend;
-}
-
 void PrimaryServerBackEnd::InsertRecordLog(const LogRecord &log_record) {
 	log_record_list_mtx_.lock();
 	log_record_list_.push_back(log_record);
@@ -113,7 +111,6 @@ void PrimaryServerBackEnd::ApplyLogs() {
 		//int num_committed = 0;
 		while (!log_record_list_.empty()) {
 			//num_committed++;
-
 
 			const LogRecord &log = log_record_list_.front();
 			//apply the write
@@ -137,54 +134,74 @@ std::thread PrimaryServerBackEnd::GetCommitingLogsThread() {
 	return std::thread([=] {ApplyLogs();});
 }
 
-std::thread PrimaryServerBackEnd::GetHeartBeatThread() {
-	return std::thread([=] {
-		while (running_ && !no_response_) {
-			// Emits heartbeat at least every 2 seconds.
-			if (GetCurrentTimestamp() - last_request_time_ > 2) {
-				PayLoad payload;
-				if (is_backup_down_) {
-					if (witness_server_->RecordLogRecords(payload)) {
-						log_record_list_mtx_.lock();
-						last_request_time_ = GetCurrentTimestamp();
-						log_record_list_mtx_.unlock();
-					}
-				}
-				else {
-					if (backup_server_frontend_->RequestCommit(payload) == true) {
-						log_record_list_mtx_.lock();
-						last_request_time_ = GetCurrentTimestamp();
-						log_record_list_mtx_.unlock();
-					}
-				}
-			}
-			std::this_thread::sleep_for (std::chrono::seconds(1));
-
-			if (GetCurrentTimestamp() - last_request_time_ > 10) {
-				PayLoad payload;
-				payload.is_primary_server = true;
-				view_number_++;
-				payload.view_number = view_number_;
-				if (witness_server_->RequestViewChange(payload)) {
-					std::cout << "new view number is " << view_number_ << ". \n";
+void PrimaryServerBackEnd::GetHeartBeat() {
+	while (running_ && !no_response_) {
+		// Emits heartbeat at least every 2 seconds.
+		if (GetCurrentTimestamp() - last_request_time_ > 2) {
+			PayLoad payload;
+			if (is_backup_down_) {
+				if (witness_server_->RecordLogRecords(payload)) {
+					log_record_list_mtx_.lock();
 					last_request_time_ = GetCurrentTimestamp();
-					is_backup_down_ = true;
-				} else {
-					// Shutting down the primary server. It gets partitioned.
-					ShutDown();
+					log_record_list_mtx_.unlock();
+				}
+			} else {
+				if (backup_server_frontend_->RequestCommit(payload) == true) {
+					log_record_list_mtx_.lock();
+					last_request_time_ = GetCurrentTimestamp();
+					log_record_list_mtx_.unlock();
 				}
 			}
 		}
-	});
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+
+		if (GetCurrentTimestamp() - last_request_time_ > 10) {
+			PayLoad payload;
+			payload.is_primary_server = true;
+			view_number_++;
+			payload.view_number = view_number_;
+			if (witness_server_->RequestViewChange(payload)) {
+				std::cout << "new view number is " << view_number_ << ". \n";
+				last_request_time_ = GetCurrentTimestamp();
+				is_backup_down_ = true;
+			} else {
+				// Shutting down the primary server. It gets partitioned.
+				ShutDown();
+			}
+		}
+	}
 }
 
+std::thread PrimaryServerBackEnd::GetHeartBeatThread() {
+	return std::thread([=] {GetHeartBeat();});
+
+}
+
+/*
+ * Register the backup server to the member list
+ */
+void PrimaryServerBackEnd::SetBackupServerFrontEnd(
+		BackupServerFrontEnd *backup_server_frontend) {
+	backup_server_frontend_ = backup_server_frontend;
+	Member t = { 2, backup_server_frontend_->get_ip(),
+			backup_server_frontend_->get_port(), -1, 0 };
+	memberList.push_back(t);
+}
+
+/*
+ * Register the witness server to the member list
+ */
 void PrimaryServerBackEnd::SetWitnessServer(
 		WitnessServerFrontEnd *witness_server) {
 	witness_server_ = witness_server;
+	Member t =
+			{ 3, witness_server->get_ip(), witness_server->get_port(), -1, 0 };
+	memberList.push_back(t);
 }
 
 void PrimaryServerBackEnd::BringUpBackUp() {
 	is_backup_down_ = false;
+
 }
 
 void PrimaryServerBackEnd::ShutDown() {

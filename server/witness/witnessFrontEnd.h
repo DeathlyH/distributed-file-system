@@ -18,6 +18,14 @@ public:
 
 	PayLoad GetLogRecords();
 
+	std::string get_ip(){
+		return host_ip;
+	}
+
+	int get_port(){
+		return port_num;
+	}
+
 private:
 	std::string host_ip;
 	int port_num;

@@ -6,6 +6,7 @@
 #include <iostream>
 #include "backupFrontEnd.h"
 #include "rpc/client.h"
+#include "rpc/rpc_error.h"
 
 //BackupServerFrontEnd::BackupServerFrontEnd(BackupServerBackEnd* backup_server_backend): backup_server_backend_(backup_server_backend) {}
 
@@ -13,6 +14,8 @@ BackupServerFrontEnd::BackupServerFrontEnd(std::string host_ip, int port_num) {
 	this->host_ip = host_ip;
 	this->port_num = port_num;
 }
+
+
 bool BackupServerFrontEnd::Start() {
 	std::cout << "BackupServerFrontEnd started. \n";
 	return true;
@@ -37,9 +40,17 @@ bool BackupServerFrontEnd::RequestCommit(const PayLoad &payload) {
 	}
 	std::cout << "primary server calls RequestCommit(). \n";
 	rpc::client c(host_ip, port_num);
+	//set 500 milliseconds timeout.
+	c.set_timeout(500);
+	try{
 	bool result = c.call("RequestCommit", payload).as<bool>();
-	return result;
 
+	return result;
+	}
+	catch (rpc::timeout e){
+		std::cout<<e.what()<<std::endl;
+	}
+    return false;
 	//return backup_server_backend_->RequestCommit(payload);
 }
 

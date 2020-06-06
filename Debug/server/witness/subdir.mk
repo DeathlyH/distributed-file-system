@@ -7,10 +7,6 @@ CC_SRCS += \
 ../server/witness/witness.cc \
 ../server/witness/witnessFrontEnd.cc 
 
-O_SRCS += \
-../server/witness/common.o \
-../server/witness/witness.o 
-
 CC_DEPS += \
 ./server/witness/witness.d \
 ./server/witness/witnessFrontEnd.d 

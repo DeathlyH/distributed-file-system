@@ -38,4 +38,18 @@ struct PayLoad {
 
 };
 
+typedef struct  {
+    int id;
+	std::string host_ip;
+	int port;
+	int status; //-1 unknown , 0 died, 1 alive
+	long timestamp;
+	MSGPACK_DEFINE(host_ip, port, status, timestamp);
+} Member;
+
+typedef struct {
+	std::map<int, Member> memberMap;
+	MSGPACK_DEFINE(memberMap);
+}MemberTable;
+
 #endif

@@ -24,6 +24,14 @@ public:
 			const std::string &file_content);
 	void BringUpBackUp();
 
+	std::string get_ip(){
+		return host_ip;
+	}
+
+	int get_port(){
+		return port_num;
+	}
+
 private:
 	//PrimaryServerBackEnd* primary_server_backend_;
 	std::string host_ip;

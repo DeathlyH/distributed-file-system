@@ -7,12 +7,6 @@ CC_SRCS += \
 ../server/primary/primary.cc \
 ../server/primary/primaryFrontEnd.cc 
 
-O_SRCS += \
-../server/primary/backupFrontEnd.o \
-../server/primary/common.o \
-../server/primary/primary.o \
-../server/primary/witnessFrontEnd.o 
-
 CC_DEPS += \
 ./server/primary/primary.d \
 ./server/primary/primaryFrontEnd.d 
