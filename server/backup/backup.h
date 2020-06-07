@@ -6,6 +6,7 @@
 #include <thread>
 #include "../../common/common.h"
 #include "../witness/witnessFrontEnd.h"
+#include "../primary/primaryFrontEnd.h"
 
 // Definition of the back end of the backup server. It processes the message from the primary server.
 class BackupServerBackEnd {
@@ -18,6 +19,7 @@ public:
 	bool RequestCommit(const PayLoad &payload);
 	void Commit(const PayLoad &payload);
 	void SetWitnessServer(WitnessServerFrontEnd *witness_server);
+	void SetPrimaryServer(PrimaryServerFrontEnd *primary_server);
     int getPortNum(){return port_num;};
 	// Commits the logs to the file system.
 	void ApplyLogs();
@@ -53,6 +55,7 @@ private:
 	std::list<LogRecord> log_record_list_;
 	std::mutex commit_point_mtx_;
 	WitnessServerFrontEnd *witness_server_;
+	PrimaryServerFrontEnd *primary_server_;
 	bool is_primary_ = false;
 	int next_available_log_id_ = 0;
 };

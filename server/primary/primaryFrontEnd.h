@@ -18,11 +18,11 @@ class PrimaryServerFrontEnd {
 public:
 	//explicit PrimaryServerFrontEnd(PrimaryServerBackEnd* primary_server_backend);
 	PrimaryServerFrontEnd(std::string host_ip, int port_num);
-	bool Start();
+
 	std::string ReadFile(const std::string &file_name);
 	bool WriteFile(const std::string &file_name,
 			const std::string &file_content);
-	void BringUpBackUp();
+	bool BringUpBackUp();
 
 	std::string get_ip(){
 		return host_ip;

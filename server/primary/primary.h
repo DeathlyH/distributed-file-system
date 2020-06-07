@@ -27,7 +27,7 @@ public:
 			const std::string &file_content);
 	void SetBackupServerFrontEnd(BackupServerFrontEnd *backup_server_frontend);
 	void SetWitnessServer(WitnessServerFrontEnd *witness_server);
-	void BringUpBackUp();
+	bool BringUpBackUp();
 
 	//void PrimaryServerBackEnd::RegisterBackup(std::string backup_ip, int port_num);
 	// Only used in testing.

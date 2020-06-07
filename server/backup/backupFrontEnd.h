@@ -10,7 +10,7 @@ class BackupServerFrontEnd {
 public:
 	//explicit BackupServerFrontEnd(BackupServerBackEnd* backup_server_backend);
 	BackupServerFrontEnd(std::string host_ip, int port_num);
-	bool Start();
+
 	// If true, the backup server agrees to commit this log.
 	bool RequestCommit(const PayLoad &payload);
 	long GetPromiseTime();

@@ -1,13 +1,16 @@
+/*
+ * primary.cc
+ *
+ * rpc server for primary server
+ *
+ */
+
 #include "primary.h"
 #include <chrono>
 #include "rpc/server.h"
 #include <iostream>
 #include <fstream>
 #include <string>
-
-/***************
- Back End.
- ****************/
 
 PrimaryServerBackEnd::PrimaryServerBackEnd(int port_num) :
 		port_num(port_num), running_(true), commiting_logs_thread_(
@@ -24,6 +27,13 @@ PrimaryServerBackEnd::~PrimaryServerBackEnd() {
 	heart_beat_thread_.join();
 }
 
+/*
+ * Start the primary server
+ *
+ * recover the operation log from witness.
+ * sends the coordinator msg to the backup server,
+ * so the primary server becomes coordinator.
+ */
 void PrimaryServerBackEnd::Start() {
 	if (!witness_server_) {
 		std::cout << "Should call SetWitnessServer() first. \n";
@@ -33,12 +43,24 @@ void PrimaryServerBackEnd::Start() {
 		log_record_list_.push_back(log);
 		next_available_log_id_ = log.log_id + 1;
 	}
-    view_number_ = payload.view_number;
+	view_number_ = payload.view_number;
 	std::cout << "Primary: next_available_log_id is " << next_available_log_id_
 			<< ". \n";
 	backup_server_frontend_->Demote();
+	std::cout << "Primary started successfully\n";
 }
 
+/*
+ * Client API WriteFile
+ *
+ * check back up servers can commit
+ * do asynchronous commit,
+ * return the result to client.
+ *
+ * @param file_name: file to write
+ * @param file_content: file content
+ * @return true: write committed.
+ */
 bool PrimaryServerBackEnd::WriteFile(const std::string &file_name,
 		const std::string &file_content) {
 	std::cout << "FrontEnd calls WriteFile() " << file_name << ". \n";
@@ -75,6 +97,14 @@ bool PrimaryServerBackEnd::WriteFile(const std::string &file_name,
 	return true;
 }
 
+/*
+ * Client API ReadFile
+ *
+ * read from local server
+ *
+ * @param file_name: file to read
+ * @return file_content: file content.
+ */
 std::string PrimaryServerBackEnd::ReadFile(const std::string &file_name) {
 	if (promised_time_ < GetCurrentTimestamp()) {
 		if (!is_backup_down_) {
@@ -93,6 +123,9 @@ std::string PrimaryServerBackEnd::ReadFile(const std::string &file_name) {
 	return file_content;
 }
 
+/*
+ * Add an operation to primary server log.
+ */
 void PrimaryServerBackEnd::InsertRecordLog(const LogRecord &log_record) {
 	log_record_list_mtx_.lock();
 	log_record_list_.push_back(log_record);
@@ -119,7 +152,7 @@ void PrimaryServerBackEnd::ApplyLogs() {
 				file << log.operation_content;
 				file.close();
 			}
-			//update ap pointer.
+			//update apply pointer.
 			log_ap = log.log_id;
 			log_record_list_.pop_front();
 		}
@@ -135,6 +168,9 @@ std::thread PrimaryServerBackEnd::GetCommitingLogsThread() {
 }
 
 void PrimaryServerBackEnd::GetHeartBeat() {
+	// leave 5 seconds to finish register the service.
+	std::this_thread::sleep_for(std::chrono::seconds(5));
+	Start();
 	while (running_ && !no_response_) {
 		// Emits heartbeat at least every 2 seconds.
 		if (GetCurrentTimestamp() - last_request_time_ > 2) {
@@ -199,27 +235,40 @@ void PrimaryServerBackEnd::SetWitnessServer(
 	memberList.push_back(t);
 }
 
-void PrimaryServerBackEnd::BringUpBackUp() {
+/*
+ * backup server informs the primary server it recovered and joined the group.
+ */
+bool PrimaryServerBackEnd::BringUpBackUp() {
+	std::cout << "Backup server recover..." << std::endl;
 	is_backup_down_ = false;
+	return true;
 
 }
 
+/*
+ * primary server stop running.
+ */
 void PrimaryServerBackEnd::ShutDown() {
 	running_ = false;
 }
 
+/*
+ * debug purpose function to set the primary has no response.
+ */
 void PrimaryServerBackEnd::SetNoResponse(bool no_response) {
 	no_response_ = no_response;
 }
 
 int main() {
-	// Initialize backup server.
-	PrimaryServerBackEnd primaryBackend(8080);
+	//setup the group with known host_ips and port_nums.
+	//server will be initialized in the thread
+	PrimaryServerBackEnd primaryBackend(8072);
 	WitnessServerFrontEnd witnessServer("127.0.0.1", 8071);
 	BackupServerFrontEnd backupServer("127.0.0.1", 8070);
 	primaryBackend.SetWitnessServer(&witnessServer);
 	primaryBackend.SetBackupServerFrontEnd(&backupServer);
 
+	//register the service
 	rpc::server srv(primaryBackend.getPortNum());
 	srv.bind("WriteFile",
 			[&primaryBackend](const std::string &file_name,
@@ -231,19 +280,10 @@ int main() {
 		return primaryBackend.ReadFile(file_name);
 	});
 
-//	srv.bind("RegisterBackup", [&primaryBackend](std::string backup_ip, int port_num){
-//		 primaryBackend.RegisterBackup(backup_ip, port_num);
-//	});
-//
-//
-//	srv.bind("RegisterWitness", [&primaryBackend](std::string backup_ip, int port_num){
-//		 primaryBackend.RegisterWitness(backup_ip, port_num);
-//	});
-
 	srv.bind("BringUpBackUp", [&primaryBackend]() {
-		primaryBackend.BringUpBackUp();
+		return primaryBackend.BringUpBackUp();
 	});
-	std::cout << "Primary Server is running..." << std::endl;
+	std::cout << "Primary server is running..." << std::endl;
 	srv.suppress_exceptions(true); //turn the exception to error response
 	srv.run();
 

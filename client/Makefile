@@ -6,7 +6,7 @@ OBJS =	test_dfs.o primaryFrontEnd.o backupFrontEnd.o witnessFrontEnd.o common.o
 
 LIBS = -lpthread -I /usr/local/include/rpc#-I ~/msgpack-c/include
 
-TARGET = test_dfs_write
+TARGET = test_dfs
 
 $(TARGET):	$(OBJS)
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) $(RPCLIB) $(LIBS)

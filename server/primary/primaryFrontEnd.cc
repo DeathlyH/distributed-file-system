@@ -1,24 +1,18 @@
 /*
  * primaryFrontEnd.cc
  *
+ * rpc client for primary server
+ *
  */
 
 #include <iostream>
 #include "primaryFrontEnd.h"
 #include "rpc/client.h"
 
-
-//PrimaryServerFrontEnd::PrimaryServerFrontEnd(PrimaryServerBackEnd* primary_server_backend):primary_server_backend_(primary_server_backend) {}
 PrimaryServerFrontEnd::PrimaryServerFrontEnd(std::string host_ip,
 		int port_num) {
 	this->host_ip = host_ip;
 	this->port_num = port_num;
-}
-
-bool PrimaryServerFrontEnd::Start() {
-	// Set up rpc or network connections.
-	std::cout << "PrimaryServerFrontEnd Started.\n";
-	return true;
 }
 
 bool PrimaryServerFrontEnd::WriteFile(const std::string &file_name,
@@ -33,13 +27,24 @@ std::string PrimaryServerFrontEnd::ReadFile(const std::string &file_name) {
 	std::cout << "Client calls ReadFile() " << file_name << ". \n";
 	rpc::client c(host_ip, port_num);
 	std::string result = c.call("ReadFile", file_name).as<std::string>();
-	std::cout<<result<<std::endl;
+	std::cout << result << std::endl;
 	return result;
 }
 
-void PrimaryServerFrontEnd::BringUpBackUp() {
-	std::cout << "Bring up backup" << std::endl;
+/*
+ * backup server will ask primary if he can join his group.
+ */
+bool PrimaryServerFrontEnd::BringUpBackUp() {
+	std::cout << "Bring up backup server" << std::endl;
 	rpc::client c(host_ip, port_num);
-	c.call("BringUpBackUp");
+	c.set_timeout(500);
+	try {
+		bool result = c.call("BringUpBackUp").as<bool>();
+		std::cout << "Succeeded." << std::endl;
+		return result;
+	} catch (std::exception &e) {
+		std::cout << e.what() << std::endl;
+	};
+	return false;
 
 }

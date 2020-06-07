@@ -2,7 +2,7 @@ CXXFLAGS =	-std=c++11 -O2 -g -Wall -fmessage-length=0
 
 RPCLIB = /usr/local/lib/librpc.a
 
-OBJS =	backup.o witnessFrontEnd.o common.o
+OBJS =	backup.o witnessFrontEnd.o primaryFrontEnd.o common.o
 
 LIBS = -lpthread -I /usr/local/include/rpc#-I ~/msgpack-c/include
 
@@ -16,6 +16,9 @@ backup.o:
 
 witnessFrontEnd.o: common.o
 	$(CXX) $(CXXFLAGS) -c ../witness/witnessFrontEnd.cc ../witness/witnessFrontEnd.h $(LIBS)
+
+primaryFrontEnd.o: common.o
+	$(CXX) $(CXXFLAGS) -c ../primary/primaryFrontEnd.cc ../primary/primaryFrontEnd.h $(LIBS)
 	
 common.o:
 	$(CXX) $(CXXFLAGS) -c ../../common/common.cc ../../common/common.h $(LIBS)
