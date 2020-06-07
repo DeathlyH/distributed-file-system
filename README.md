@@ -1,6 +1,6 @@
 # Simplified Harp File System
 
-Implement the classic harp file system to better understand the paper better
+Implement the classic harp file system to better understand the paper.
 
 There are 3 roles of servers:
 
