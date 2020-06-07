@@ -18,7 +18,7 @@ Install [rpclib](github.com/rpclib/rpclib)
 
 ```
 git clone https://github.com/rpclib/rpclib.git
-cd rpclib.git
+cd rpclib
 cmake -B build
 cd build
 make
