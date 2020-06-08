@@ -30,3 +30,10 @@ PayLoad WitnessServerFrontEnd::GetLogRecords() {
 	return result;
 }
 
+void WitnessServerFrontEnd::Demote(){
+	std::cout << "\trequest to demote witness" << std::endl;
+	rpc::client c(host_ip, port_num);
+	c.call("Demote");
+
+}
+

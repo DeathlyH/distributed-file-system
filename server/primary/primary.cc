@@ -39,11 +39,20 @@ void PrimaryServerBackEnd::Start() {
 		std::cout << "Should call SetWitnessServer() first. \n";
 	}
 	PayLoad payload = witness_server_->GetLogRecords();
+
+	//TODO here is a bug, as the assumption for the commit_point_ is problematic.
+	//
+	if (payload.log_record_vector.size()>0){
+		log_ap = payload.log_record_vector.front().log_id - 1;
+		commit_point_ = payload.log_record_vector.back().log_id;
+	}
+
 	for (const auto &log : payload.log_record_vector) {
 		log_record_list_.push_back(log);
 		next_available_log_id_ = log.log_id + 1;
 	}
 	view_number_ = payload.view_number;
+	std::cout<<"View number: "<<view_number_<<"\n";
 	std::cout << "Primary: next_available_log_id is " << next_available_log_id_
 			<< ". \n";
 	backup_server_frontend_->Demote();
@@ -63,12 +72,13 @@ void PrimaryServerBackEnd::Start() {
  */
 bool PrimaryServerBackEnd::WriteFile(const std::string &file_name,
 		const std::string &file_content) {
-	std::cout << "FrontEnd calls WriteFile() " << file_name << ". \n";
+	std::cout << "Primary Server: API call WriteFile(" << file_name << "). \n";
 	LogRecord log_record(GetCurrentTimestamp(), next_available_log_id_++,
 			"WriteFile", file_name, file_content, "primary");
 	InsertRecordLog(log_record);
 
 	//Check backup servers can commit.
+	std::cout << "Primary Server: Ask the group to prepare." << std::endl;
 	PayLoad payload( { log_record }, commit_point_, log_ap);
 	if (!is_backup_down_) {
 		if (backup_server_frontend_->RequestCommit(payload) == false) {
@@ -81,18 +91,20 @@ bool PrimaryServerBackEnd::WriteFile(const std::string &file_name,
 
 	//Do asynchronous commit
 	cp_mutex.lock();
+	std::cout << "Primary Server: Commit log " << log_record.log_id
+			<< std::endl;
 	commit_point_++;
 
 	PayLoad payload2( { }, commit_point_, log_ap);
 
 	if (!is_backup_down_) {
+		//send commit to backups asynchronously.
+		//std::thread([=] {backup_server_frontend_->Commit(payload2);});
 		backup_server_frontend_->Commit(payload2);
 	}
 	//witness_server -> Commit(payload);
 
 	cp_mutex.unlock();
-
-	//send commit to backups asynchronously.
 
 	return true;
 }
@@ -106,6 +118,7 @@ bool PrimaryServerBackEnd::WriteFile(const std::string &file_name,
  * @return file_content: file content.
  */
 std::string PrimaryServerBackEnd::ReadFile(const std::string &file_name) {
+	std::cout << "Primary Server: API call ReadFile(" << file_name << "). \n";
 	if (promised_time_ < GetCurrentTimestamp()) {
 		if (!is_backup_down_) {
 			promised_time_ = backup_server_frontend_->GetPromiseTime();
@@ -119,7 +132,7 @@ std::string PrimaryServerBackEnd::ReadFile(const std::string &file_name) {
 
 	file.close();
 
-	std::cout << file_content << std::endl;
+	//std::cout << file_content << std::endl;
 	return file_content;
 }
 
@@ -127,6 +140,8 @@ std::string PrimaryServerBackEnd::ReadFile(const std::string &file_name) {
  * Add an operation to primary server log.
  */
 void PrimaryServerBackEnd::InsertRecordLog(const LogRecord &log_record) {
+	std::cout << "Primary Server: Record log " << log_record.log_id
+			<< std::endl;
 	log_record_list_mtx_.lock();
 	log_record_list_.push_back(log_record);
 	last_request_time_ = GetCurrentTimestamp();
@@ -139,22 +154,26 @@ void PrimaryServerBackEnd::InsertRecordLog(const LogRecord &log_record) {
 void PrimaryServerBackEnd::ApplyLogs() {
 	while (running_) {
 		//mimic some delay for processing
-		std::this_thread::sleep_for(std::chrono::seconds(1));
+		//std::this_thread::sleep_for(std::chrono::seconds(1));
 		log_record_list_mtx_.lock();
 		//int num_committed = 0;
-		while (!log_record_list_.empty()) {
+		//while (!log_record_list_.empty()) {
+		if (!log_record_list_.empty()) {
 			//num_committed++;
-
-			const LogRecord &log = log_record_list_.front();
-			//apply the write
-			if (log.operation_name.compare("WriteFile") == 0) {
-				std::ofstream file(log.file_name);
-				file << log.operation_content;
-				file.close();
+			if (log_ap < commit_point_) {
+				const LogRecord &log = log_record_list_.front();
+				std::cout << "Primary server: Apply Log " << log.log_id
+						<< std::endl;
+				//apply the write
+				if (log.operation_name.compare("WriteFile") == 0) {
+					std::ofstream file(log.file_name);
+					file << log.operation_content;
+					file.close();
+				}
+				//update apply pointer.
+				log_ap = log.log_id;
+				log_record_list_.pop_front();
 			}
-			//update apply pointer.
-			log_ap = log.log_id;
-			log_record_list_.pop_front();
 		}
 		log_record_list_mtx_.unlock();
 //		if (!is_backup_down_ && num_committed > 0) {
@@ -174,7 +193,7 @@ void PrimaryServerBackEnd::GetHeartBeat() {
 	while (running_ && !no_response_) {
 		// Emits heartbeat at least every 2 seconds.
 		if (GetCurrentTimestamp() - last_request_time_ > 2) {
-			PayLoad payload;
+			PayLoad payload({}, commit_point_, log_ap);
 			if (is_backup_down_) {
 				if (witness_server_->RecordLogRecords(payload)) {
 					log_record_list_mtx_.lock();
@@ -200,6 +219,14 @@ void PrimaryServerBackEnd::GetHeartBeat() {
 				std::cout << "new view number is " << view_number_ << ". \n";
 				last_request_time_ = GetCurrentTimestamp();
 				is_backup_down_ = true;
+				this->log_record_list_mtx_.lock();
+
+				std::vector<LogRecord> v { std::begin(this->log_record_list_),
+						std::end(log_record_list_) };
+				PayLoad payload2(v, commit_point_, log_ap);
+				witness_server_->RecordLogRecords(payload2);
+				this->log_record_list_mtx_.unlock();
+
 			} else {
 				// Shutting down the primary server. It gets partitioned.
 				ShutDown();
@@ -241,6 +268,7 @@ void PrimaryServerBackEnd::SetWitnessServer(
 bool PrimaryServerBackEnd::BringUpBackUp() {
 	std::cout << "Backup server recover..." << std::endl;
 	is_backup_down_ = false;
+	witness_server_->Demote();
 	return true;
 
 }

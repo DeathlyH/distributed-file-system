@@ -10,11 +10,22 @@
 #include <string>
 #include "rpc/server.h"
 
-
 WitnessServer::WitnessServer(int port_num) :
 		port_num(port_num) {
+	log_record_list_mtx_.lock();
 	log_record_list_.clear();
+	log_record_list_mtx_.unlock();
 
+}
+
+/*
+ * Witness no longer need to record the log.
+ */
+void WitnessServer::Demote() {
+	std::cout<<"Witness server: Demote."<<std::endl;
+	log_record_list_mtx_.lock();
+	log_record_list_.clear();
+	log_record_list_mtx_.unlock();
 }
 
 /*
@@ -63,7 +74,6 @@ bool WitnessServer::RequestViewChange(const PayLoad &payload) {
  */
 bool WitnessServer::RecordLogRecords(const PayLoad &payload) {
 
-
 	if (payload.log_record_vector.empty()) {
 		std::cout << "Witness server: Receive a heartbeat. \n";
 		//std::cout << ":."<<std::endl;
@@ -71,7 +81,8 @@ bool WitnessServer::RecordLogRecords(const PayLoad &payload) {
 		log_record_list_mtx_.lock();
 		for (const auto &log : payload.log_record_vector) {
 			log_record_list_.push_back(log);
-			std::cout << "Witness server: Record log " << log.log_id << std::endl;
+			std::cout << "Witness server: Record log " << log.log_id
+					<< std::endl;
 		}
 		log_record_list_mtx_.unlock();
 	}
@@ -112,6 +123,10 @@ int main() {
 
 	srv.bind("GetLogRecords", [&backend]() {
 		return backend.GetLogRecords();
+	});
+
+	srv.bind("Demote", [&backend](){
+		backend.Demote();
 	});
 
 	srv.suppress_exceptions(true); //turn the exception to error response

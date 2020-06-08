@@ -9,6 +9,7 @@ class WitnessServer {
 public:
   WitnessServer(int port_num);
   PayLoad GetLogRecords();
+  void Demote();
   bool RecordLogRecords(const PayLoad& payload);
   int getPortNum(){
 	  return port_num;

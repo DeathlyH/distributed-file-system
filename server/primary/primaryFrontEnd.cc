@@ -17,14 +17,14 @@ PrimaryServerFrontEnd::PrimaryServerFrontEnd(std::string host_ip,
 
 bool PrimaryServerFrontEnd::WriteFile(const std::string &file_name,
 		const std::string &file_content) {
-	std::cout << "Client calls WriteFile() " << file_name << ". \n";
+	std::cout << "Client: Call Primary WriteFile(" << file_name << "). \n";
 	rpc::client c(host_ip, port_num);
 	bool result = c.call("WriteFile", file_name, file_content).as<bool>();
 	return result;
 }
 
 std::string PrimaryServerFrontEnd::ReadFile(const std::string &file_name) {
-	std::cout << "Client calls ReadFile() " << file_name << ". \n";
+	std::cout << "Client: Call Primary ReadFile(" << file_name << "). \n";
 	rpc::client c(host_ip, port_num);
 	std::string result = c.call("ReadFile", file_name).as<std::string>();
 	std::cout << result << std::endl;

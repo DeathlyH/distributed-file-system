@@ -33,11 +33,21 @@ void BackupServerBackEnd::Start() {
 		std::cout << "Should call SetWitnessServer() first. \n";
 	}
 	PayLoad payload = witness_server_->GetLogRecords();
+
+	//TODO here is a bug, as the assumption for the commit_point_ is problematic.
+	//
+	if (payload.log_record_vector.size()>0){
+		log_ap = payload.log_record_vector.front().log_id - 1;
+		commit_point_ = payload.log_record_vector.back().log_id;
+	}
+
 	for (const auto &log : payload.log_record_vector) {
 		log_record_list_.push_back(log);
 		next_available_log_id_ = log.log_id + 1;
 	}
 	view_number_ = payload.view_number;
+
+	std::cout<<"View number: "<<view_number_<<"\n";
 	std::cout << "Backup: next_available_log_id is " << next_available_log_id_
 			<< ". \n";
 
@@ -81,10 +91,11 @@ bool BackupServerBackEnd::RequestCommit(const PayLoad &payload) {
 		}
 
 		InsertRecordLog(log);
-		std::cout << "file name is " << log.file_name << ". \n";
-		std::cout << "file content is " << log.operation_content << ". \n";
+		//std::cout << "file name is " << log.file_name << ". \n";
+		//std::cout << "file content is " << log.operation_content << ". \n";
 		//next_available_log_id_ = log.log_id + 1;
 	}
+	std::cout << "Backup server: Prepare succeeded. \n";
 	return true;
 }
 
@@ -101,11 +112,18 @@ bool BackupServerBackEnd::RequestCommit(const PayLoad &payload) {
  *
  */
 void BackupServerBackEnd::Commit(const PayLoad &payload) {
+	std::cout << "Backup Server: Before Commit, cp = " << commit_point_
+			<< " primary ap = " << server_log_ap << " primary cp = "
+			<< payload.commit_point << std::endl;
 	commit_point_mtx_.lock();
 	if (payload.commit_point > commit_point_) {
 		//backup maintains a CP stores the largest CP it has received in message.
+
 		commit_point_ = payload.commit_point;
 		server_log_ap = payload.log_ap;
+
+		std::cout << "Backup Server: Commit. cp = " << commit_point_
+				<< " primary ap = " << server_log_ap << std::endl;
 	}
 	commit_point_mtx_.unlock();
 }
@@ -116,6 +134,8 @@ void BackupServerBackEnd::Commit(const PayLoad &payload) {
  * @Param log_record contains one event.
  */
 void BackupServerBackEnd::InsertRecordLog(const LogRecord &log_record) {
+
+	std::cout << "Backup server: Record log " << log_record.log_id << std::endl;
 	log_record_list_mtx_.lock();
 	log_record_list_.push_back(log_record);
 	next_available_log_id_ += 1;
@@ -131,14 +151,20 @@ void BackupServerBackEnd::ApplyLogs() {
 	while (running_) {
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 		log_record_list_mtx_.lock();
+		//while (!log_record_list_.empty()) { //TODO double check this
 		while (!log_record_list_.empty()) { //TODO double check this
 
 			if ((!is_primary_) && (log_ap > server_log_ap)) {
 				break;
+				//continue;
 			}
+			std::cout << "Backup server: log_ap " << log_ap << " cp: "
+					<< commit_point_ << std::endl;
+			if (log_ap < commit_point_) {
 
-			const LogRecord &log = log_record_list_.front();
-			std::cout << "Backup server: Apply Log " << log.log_id << std::endl;
+				const LogRecord &log = log_record_list_.front();
+				std::cout << "Backup server: Apply Log " << log.log_id
+						<< std::endl;
 //			commit_point_mtx_.lock();
 //			if (commit_point_ < log.log_id) {
 //				commit_point_mtx_.unlock();
@@ -146,13 +172,18 @@ void BackupServerBackEnd::ApplyLogs() {
 //			}
 //			commit_point_mtx_.unlock();
 
-			if (log.operation_name.compare("WriteFile") == 0) {
-				std::ofstream file(log.file_name);
-				file << log.operation_content;
-				file.close();
+				if (log.operation_name.compare("WriteFile") == 0) {
+					std::ofstream file(log.file_name);
+					file << log.operation_content;
+					file.close();
+				}
+				log_ap = log.log_id;
+				log_record_list_.pop_front();
 			}
-			log_ap = log.log_id;
-			log_record_list_.pop_front();
+			else{
+				std::this_thread::sleep_for(std::chrono::seconds(1));
+				break;
+			}
 
 		}
 		log_record_list_mtx_.unlock();
@@ -183,6 +214,11 @@ std::thread BackupServerBackEnd::GetViewChangeThread() {
 				if (witness_server_->RequestViewChange(payload)) {
 					std::cout << "Backup server: Becomes coordinator. \n";
 					is_primary_ = true;
+					this->log_record_list_mtx_.lock();
+					std::vector<LogRecord> v {std::begin(this->log_record_list_), std::end(log_record_list_)};
+					PayLoad payload( v, commit_point_, log_ap);
+					witness_server_->RecordLogRecords(payload);
+					this->log_record_list_mtx_.unlock();
 					//
 				}
 				else {
@@ -232,7 +268,9 @@ void BackupServerBackEnd::SetPrimaryServer(
  * Backup server demote from being coordinator.
  */
 void BackupServerBackEnd::Demote() {
-	std::cout << "Backup server: Demote from a coordinator." << std::endl;
+	if (is_primary_) {
+		std::cout << "Backup server: Demote from a coordinator." << std::endl;
+	}
 	is_primary_ = false;
 }
 

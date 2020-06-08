@@ -18,6 +18,8 @@ public:
 
 	PayLoad GetLogRecords();
 
+	void Demote();
+
 	std::string get_ip(){
 		return host_ip;
 	}

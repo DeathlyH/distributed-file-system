@@ -1,1 +1,1 @@
-./test_dfs 1
+./test_dfs 1 $1

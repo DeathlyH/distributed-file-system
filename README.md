@@ -69,6 +69,22 @@ Under the client folder, there are two shell script.
 1. **test_rd_wr_primary.sh**: This script is used to test read/write by communicating to primary server.
 2. **test_rd_wr_backup.sh**: This script is used to test read/write by communicating to backup server.
 
+This will request the primary server to do the read/write operation 5 times.
+
+```
+./test_rd_wr_primary.sh 5 
+
+```
+
+This will request the backup server to do the read/write operation 6 times.
+
+```
+./test_rd_wr_backup.sh 6 
+
+```
+
+
+
 To check the ports of the server
 
 ```

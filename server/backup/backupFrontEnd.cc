@@ -34,7 +34,7 @@ bool BackupServerFrontEnd::RequestCommit(const PayLoad &payload) {
 	}
 	rpc::client c(host_ip, port_num);
 	//set 500 milliseconds timeout.
-	c.set_timeout(500);
+	c.set_timeout(5000);
 	try {
 		bool result = c.call("RequestCommit", payload).as<bool>();
 
@@ -49,8 +49,9 @@ bool BackupServerFrontEnd::RequestCommit(const PayLoad &payload) {
  * Asynchronous commit rpc call
  */
 void BackupServerFrontEnd::Commit(const PayLoad &payload) {
+	std::cout<<"backup commit called"<<std::endl;
 	rpc::client c(host_ip, port_num);
-	c.async_call("Commit", payload);
+	c.call("Commit", payload);
 }
 
 void BackupServerFrontEnd::SetNoResponse(bool no_response) {
@@ -69,6 +70,7 @@ void BackupServerFrontEnd::Demote() {
 }
 
 std::string BackupServerFrontEnd::ReadFile(const std::string &file_name) {
+	std::cout << "Client: Call Backup WriteFile(" << file_name << "). \n";
 	rpc::client c(host_ip, port_num);
 	std::string content = c.call("ReadFile", file_name).as<std::string>();
 	return content;
@@ -76,6 +78,7 @@ std::string BackupServerFrontEnd::ReadFile(const std::string &file_name) {
 
 bool BackupServerFrontEnd::WriteFile(const std::string &file_name,
 		const std::string &file_content) {
+	std::cout << "Client: Call Backup WriteFile(" << file_name << "). \n";
 	rpc::client c(host_ip, port_num);
 	bool result = c.call("WriteFile", file_name, file_content).as<bool>();
 	return result;
