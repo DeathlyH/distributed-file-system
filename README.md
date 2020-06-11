@@ -63,9 +63,24 @@ cd server/backup
 ./backup_server
 ```
 
+## Client API
+Under the client folder, there are two executables.
+To write to the file system, the syntax is 
+
+```
+./write_harp <1 = primary, 0 = backup> <filename> <file_content>
+```
+
+Similarly to read a file from the file system, the syntax is
+
+```
+./read_harp <1 = primary, 0 = backup> <filename>
+```
+
+
 ## Test
 
-Under the client folder, there are two shell script.
+Under the test folder, there are two shell script.
 1. **test_rd_wr_primary.sh**: This script is used to test read/write by communicating to primary server.
 2. **test_rd_wr_backup.sh**: This script is used to test read/write by communicating to backup server.
 
